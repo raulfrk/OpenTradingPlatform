@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "entities/";
+
+message News {
+    int64 id = 1;
+    string Author = 2;
+    int64 CreatedAt = 3;
+    int64 UpdatedAt = 4;
+    string Headline = 5;
+    string Summary = 6;
+    string Content = 7;
+    string URL = 8;
+    repeated string Symbols = 9;
+    string Fingerprint = 10;
+    string Source = 11;
+}
+

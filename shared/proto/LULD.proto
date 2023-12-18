@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "entities/";
+
+
+message LULD {
+    string Symbol = 1;
+    double LimitUpPrice = 2;
+    double LimitDownPrice = 3;
+    string Indicator = 4;
+    int64 Timestamp = 5;
+    string Tape = 6;
+    string Fingerprint = 7;
+    string Source = 8;
+}
+

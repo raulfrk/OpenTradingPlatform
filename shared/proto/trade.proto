@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "entities/";
+
+message Trade {
+    int64 ID = 1;
+    string Symbol = 2;
+    string Exchange = 3;
+    double Price = 4;
+    double Size = 5;
+    int64 Timestamp = 6;
+    string TakerSide = 7;
+    repeated string Conditions = 8;
+    string Tape = 9;
+    string Fingerprint = 10;
+    string Update = 11;
+    string Source = 13;
+}

@@ -1,0 +1,4 @@
+package alpaca
+
+var DEFAULT_EXCHANGE_STOCK = "IEX"
+var DEFAULT_EXCHANGE_CRYPTO = "US"
