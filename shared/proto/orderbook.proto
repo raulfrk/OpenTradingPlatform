@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "entities/";
+
+message OrderbookEntry {
+    double Price = 1;
+    double Size = 2;
+    string Source = 3;
+}
+
+message Orderbook {
+    string Symbol = 1;
+    string Exchange = 2;
+    int64 Timestamp = 3;
+    repeated OrderbookEntry Asks = 4;
+    repeated OrderbookEntry Bids = 5;
+    bool Reset = 6;
+    string Fingerprint = 7;
+    string Source = 8;
+}
+

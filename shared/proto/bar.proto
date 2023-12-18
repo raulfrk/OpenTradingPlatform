@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "entities/";
+
+message Bar {
+    string Symbol = 1;
+    string Exchange = 2;
+    double Open = 3;
+    double High = 4;
+    double Low = 5;
+    double Close = 6;
+    double Volume = 7;
+    double VWAP = 8;
+    int64 Timestamp = 9;
+    uint64 TradeCount = 10;
+    string Fingerprint = 11;
+    string Source = 12;
+}

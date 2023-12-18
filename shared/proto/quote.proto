@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "entities/";
+
+message Quote {
+    string Symbol = 1;
+    string BidExchange = 2;
+    string Exchange = 3;
+    double BidPrice = 4;
+    double BidSize = 5;
+    string AskExchange = 6;
+    double AskPrice = 7;
+    double AskSize = 8;
+    int64 Timestamp = 9;
+    repeated string Conditions = 10;
+    string Tape = 11;
+    string Fingerprint = 12;
+    string Source = 13;
+}
+
