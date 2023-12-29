@@ -1,0 +1,26 @@
+[
+    {
+        "operation": "stream-subscribe",
+        "streamSubscribeRequest": {
+            "operation": "add",
+            "streamSubscribeWithAgents": [
+                {
+                    "topic": "*.logging",
+                    "agentCount": 4
+                }
+            ]
+        }
+    },
+    {
+        "operation": "stream-subscribe",
+        "streamSubscribeRequest": {
+            "operation": "add",
+            "streamSubscribeWithAgents": [
+                {
+                    "topic": "dataprovider.*.alpaca.*.*.>",
+                    "agentCount": 50
+                }
+            ]
+        }
+    }
+]
