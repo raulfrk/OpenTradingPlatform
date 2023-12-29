@@ -55,6 +55,11 @@ func HandleStoreDataFromQueue(msg *entities.Message) {
 			&entities.News{},
 			data.InsertBatchNews,
 			data.NewsFromEntities)
+	case string(types.NewsWithSentiment):
+		utils.HandleEntityQueueWithConversion(queue,
+			&entities.News{},
+			data.InsertBatchNewsWithSentiment,
+			data.NewsFromEntities)
 	}
 }
 
@@ -80,6 +85,8 @@ func HandleStoreData(msg *entities.Message) {
 		utils.HandleEntity[*entities.Orderbook](msg, &entities.Orderbook{}, data.InsertOrderbook)
 	case string(types.RawText):
 		utils.HandleEntity[*entities.News](msg, &entities.News{}, data.InsertNews)
+	case string(types.NewsWithSentiment):
+		utils.HandleEntity[*entities.News](msg, &entities.News{}, data.InsertNewsWithSentiment)
 	case string(types.Status):
 		utils.HandleEntity[*entities.TradingStatus](msg, &entities.TradingStatus{}, data.InsertTradingStatus)
 	}

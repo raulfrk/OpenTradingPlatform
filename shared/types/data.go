@@ -4,12 +4,13 @@ type TimeFrame string
 type DataRequestOp string
 
 const (
-	OneMin    TimeFrame     = "1min"
-	OneHour                 = "1hour"
-	OneDay                  = "1day"
-	OneWeek                 = "1week"
-	OneMonth                = "1month"
-	DataGetOp DataRequestOp = "get"
+	OneMin      TimeFrame     = "1min"
+	OneHour                   = "1hour"
+	OneDay                    = "1day"
+	OneWeek                   = "1week"
+	OneMonth                  = "1month"
+	NoTimeFrame               = "none"
+	DataGetOp   DataRequestOp = "get"
 )
 
 func GetTimeFrameMap() map[string]TimeFrame {
@@ -19,6 +20,7 @@ func GetTimeFrameMap() map[string]TimeFrame {
 		"1day":   OneDay,
 		"1week":  OneWeek,
 		"1month": OneMonth,
+		"none":   NoTimeFrame,
 	}
 }
 

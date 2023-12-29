@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
 	"tradingplatform/shared/utils"
@@ -15,8 +16,34 @@ import (
 
 var commandHandler *utils.Handler[string]
 
+var cancelKeys map[string]context.CancelFunc = make(map[string]context.CancelFunc)
+var cancelKeyMutex sync.RWMutex
+
+func GetCancelFunc(key string) (context.CancelFunc, bool) {
+	cancelKeyMutex.RLock()
+	defer cancelKeyMutex.RUnlock()
+	cancelFunc, ok := cancelKeys[key]
+	return cancelFunc, ok
+}
+
+func AddCancelFunc(key string, cancelFunc context.CancelFunc) error {
+	cancelKeyMutex.Lock()
+	defer cancelKeyMutex.Unlock()
+	if _, ok := cancelKeys[key]; ok {
+		return fmt.Errorf("cancel key %s already exists", key)
+	}
+	cancelKeys[key] = cancelFunc
+	return nil
+}
+
+func RemoveCancelFunc(key string) {
+	cancelKeyMutex.Lock()
+	defer cancelKeyMutex.Unlock()
+	delete(cancelKeys, key)
+}
+
 // Initialize command handling
-func StartCommandHandler(component types.Component, cliHandler func() *cobra.Command, jsonHandler func(string) string) {
+func StartCommandHandler(component types.Component, cliHandler func() *cobra.Command, jsonHandler func(context.Context, string) string) {
 	commandHandler = utils.NewHandler[string]()
 	go handleCommand(commandHandler, component, cliHandler, jsonHandler)
 }
@@ -25,18 +52,20 @@ func GetCommandHandler() *utils.Handler[string] {
 	return commandHandler
 }
 
-func handleCommandContent(m *nats.Msg, handler *utils.Handler[string], cliHandler func() *cobra.Command, jsonHandler func(string) string) {
+func handleCommandContent(m *nats.Msg, handler *utils.Handler[string], cliHandler func() *cobra.Command, jsonHandler func(context.Context, string) string) {
 	cmd := string(m.Data)
 	if len(cmd) > 4 && cmd[:4] == "json" {
-		handleJSONCommand(m, jsonHandler)
+		handleJSONCommand(m, handler, jsonHandler)
 	} else {
 		handleCLICommand(m, handler, cliHandler)
 	}
 
 }
 
-func handleJSONCommand(m *nats.Msg, jsonHandler func(string) string) {
-	response := jsonHandler(string(m.Data[4:]))
+func handleJSONCommand(m *nats.Msg, handler *utils.Handler[string], jsonHandler func(context.Context, string) string) {
+	childContext, cancel := context.WithCancel(handler.Ctx())
+	defer cancel()
+	response := jsonHandler(context.WithValue(childContext, CancelKey{}, cancel), string(m.Data[4:]))
 	if len(response) == 0 {
 		m.Respond([]byte(types.NewError(
 			fmt.Errorf("no response from command due to invalid command, or component might have quit"),
@@ -46,10 +75,45 @@ func handleJSONCommand(m *nats.Msg, jsonHandler func(string) string) {
 	m.Respond([]byte(response))
 }
 
+func splitArgs(input string) []string {
+	// Split the string by spaces
+	words := strings.Fields(input)
+
+	var result []string
+	var inQuote bool
+	var currentWord string
+
+	// Iterate through each word to handle quotes
+	for _, word := range words {
+
+		if strings.HasPrefix(word, `"`) {
+			// Start of a double-quoted section
+			inQuote = true
+			currentWord = word[1:]
+		} else if strings.HasSuffix(word, `"`) {
+			// End of a double-quoted section
+			inQuote = false
+			currentWord += " " + strings.TrimSuffix(word, `"`)
+			result = append(result, currentWord)
+		} else if inQuote {
+			// Inside a double-quoted section
+			currentWord += " " + word
+		} else {
+			// Not inside a double-quoted section
+			result = append(result, word)
+		}
+	}
+
+	return result
+}
+
+type CancelKey struct{}
+
 func handleCLICommand(m *nats.Msg, handler *utils.Handler[string], cliHandler func() *cobra.Command) {
-	str := strings.Split(string(m.Data), " ")
+	iString := string(m.Data)
+
 	rootCmd := cliHandler()
-	rootCmd.SetArgs(str)
+	rootCmd.SetArgs(splitArgs(iString))
 
 	buf := new(bytes.Buffer)
 	errBuf := new(bytes.Buffer)
@@ -57,7 +121,7 @@ func handleCLICommand(m *nats.Msg, handler *utils.Handler[string], cliHandler fu
 	rootCmd.SetErr(errBuf)
 	childContext, cancel := context.WithCancel(handler.Ctx())
 	defer cancel()
-	err := rootCmd.ExecuteContext(childContext)
+	err := rootCmd.ExecuteContext(context.WithValue(childContext, CancelKey{}, cancel))
 	// If cobra produces an error (e.g. unknown command)
 	// we want to send it back to the caller
 	if errBuf.Len() > 0 {
@@ -77,7 +141,7 @@ func handleCLICommand(m *nats.Msg, handler *utils.Handler[string], cliHandler fu
 	m.Respond(buf.Bytes())
 }
 
-func handleCommand(handler *utils.Handler[string], component types.Component, cliHandler func() *cobra.Command, jsonHandler func(string) string) {
+func handleCommand(handler *utils.Handler[string], component types.Component, cliHandler func() *cobra.Command, jsonHandler func(context.Context, string) string) {
 	nc, err := nats.Connect(nats.DefaultURL, nats.FlusherTimeout(0))
 	ctx := handler.Ctx()
 	if err != nil {

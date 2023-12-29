@@ -9,14 +9,11 @@ import (
 	"tradingplatform/shared/types"
 )
 
-type DataSource string
 type Account string
 
 const (
-	AnyAccount        Account    = "any"
-	DefaultAccount    Account    = "default"
-	Alpaca            DataSource = "alpaca"
-	DefaultDataSource            = Alpaca
+	AnyAccount     Account = "any"
+	DefaultAccount Account = "default"
 )
 const (
 	StreamDefaultSource     = "alpaca"
@@ -26,7 +23,7 @@ const (
 
 // Datastructure to represent a stream request
 type StreamRequest struct {
-	Source     DataSource            `json:"source"`
+	Source     types.Source          `json:"source"`
 	AssetClass types.AssetClass      `json:"assetClass"`
 	Symbols    []string              `json:"symbols"`
 	Operation  types.StreamRequestOp `json:"operation"`
@@ -107,7 +104,7 @@ func NewStreamSubscribeRequestFromRaw(iTopicAgents []string,
 	return streamSubscribeRequest, nil
 }
 
-func NewStreamRequest(source DataSource,
+func NewStreamRequest(source types.Source,
 	assetClass types.AssetClass,
 	symbols []string,
 	operation types.StreamRequestOp,
@@ -186,7 +183,7 @@ func NewStreamRequestFromRaw(iSource string,
 	return streamRequest, nil
 }
 
-func (sr *StreamRequest) GetSource() DataSource {
+func (sr *StreamRequest) GetSource() types.Source {
 	return sr.Source
 }
 
@@ -224,9 +221,9 @@ func GetAccount() map[string]Account {
 	}
 }
 
-func GetDataTypeMap() map[DataSource]func(types.AssetClass) map[types.DataType]types.DataType {
-	return map[DataSource]func(types.AssetClass) map[types.DataType]types.DataType{
-		Alpaca: getAlpacaDataType,
+func GetDataTypeMap() map[types.Source]func(types.AssetClass) map[types.DataType]types.DataType {
+	return map[types.Source]func(types.AssetClass) map[types.DataType]types.DataType{
+		types.Alpaca: getAlpacaDataType,
 	}
 }
 
@@ -260,8 +257,9 @@ func getAlpacaDataType(assetClass types.AssetClass) map[types.DataType]types.Dat
 	}
 }
 
-func GetDataSourceMap() map[string]DataSource {
-	return map[string]DataSource{
-		"alpaca": Alpaca,
+func GetDataSourceMap() map[string]types.Source {
+	return map[string]types.Source{
+		"alpaca":   types.Alpaca,
+		"internal": types.Internal,
 	}
 }

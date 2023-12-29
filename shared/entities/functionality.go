@@ -34,6 +34,13 @@ func (b *Bar) SetFingerprint() {
 	b.Fingerprint, _ = HashStruct(b)
 }
 
+func (s *NewsSentiment) SetFingerprint() {
+	oldTimestamp := s.Timestamp
+	s.Timestamp = 0
+	s.Fingerprint, _ = HashStruct(s)
+	s.Timestamp = oldTimestamp
+}
+
 func (o *Orderbook) SetFingerprint() {
 	o.Fingerprint, _ = HashStruct(o)
 }
@@ -179,6 +186,10 @@ func (s *TradingStatus) ToPayload() []byte {
 }
 
 func (n *News) ToPayload() []byte {
+	return GeneratePayload(n)
+}
+
+func (n *NewsSentiment) ToPayload() []byte {
 	return GeneratePayload(n)
 }
 

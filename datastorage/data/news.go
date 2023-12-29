@@ -1,31 +1,33 @@
 package data
 
 import (
+	"errors"
 	"time"
 	"tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/requests"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 type NewsSymbol struct {
 	Symbol          string `gorm:"primaryKey"`
-	NewsFingerprint string `gorm:"primaryKey"`
+	NewsFingerprint string `gorm:"primaryKey;foreignKey"`
 }
 type News struct {
-	Id          int64
-	Author      string
-	CreatedAt   time.Time `gorm:"index"`
-	UpdatedAt   time.Time
-	Headline    string
-	Summary     string
-	Content     string
-	URL         string
-	Symbols     []NewsSymbol `gorm:"foreignKey:NewsFingerprint"`
-	Fingerprint string       `gorm:"primaryKey"`
-	Source      string
-	Sentiment   []Sentiment `gorm:"foreignKey:NewsFingerprint"`
+	Id                 int64
+	Author             string
+	CreatedAtTimestamp time.Time `gorm:"index"`
+	UpdatedAtTimestamp time.Time
+	Headline           string
+	Summary            string
+	Content            string
+	URL                string
+	Symbols            []NewsSymbol `gorm:"foreignKey:NewsFingerprint"`
+	Fingerprint        string       `gorm:"primaryKey"`
+	Source             string
+	Sentiment          []Sentiment `gorm:"foreignKey:NewsFingerprint"`
 }
 
 type Sentiment struct {
@@ -33,29 +35,30 @@ type Sentiment struct {
 	Sentiment                string
 	SentimentAnalysisProcess string
 	NewsFingerprint          string
-	LLM                      []LLM  `gorm:"many2many:sentiment_llm"`
-	Fingerprint              string `gorm:"primaryKey"`
+	// Sentiment fingerprint might not result always from hashing the same struct
+	// TODO: decide what to do about this
+	Fingerprint  string `gorm:"primaryKey"`
+	LLMName      string `gorm:"foreignKey:LLMName"` // New field for LLM name
+	Symbol       string
+	SystemPrompt string
+	Failed       bool
 }
 
 type LLM struct {
-	Sentiment []Sentiment `gorm:"many2many:sentiment_llm"`
-	Name      string      `gorm:"primaryKey;"`
+	Name       string      `gorm:"primaryKey"`
+	Sentiments []Sentiment `gorm:"foreignKey:LLMName;references:Name"`
 }
 
 func SentimentFromEntity(entity *entities.NewsSentiment) Sentiment {
-	llm := make([]LLM, len(entity.LLM))
-
-	for i, l := range entity.LLM {
-		llm[i] = LLM{
-			Name: l,
-		}
-	}
 	return Sentiment{
 		Timestamp:                time.Unix(entity.Timestamp, 0),
 		Sentiment:                entity.Sentiment,
 		SentimentAnalysisProcess: entity.SentimentAnalysisProcess,
 		Fingerprint:              entity.Fingerprint,
-		LLM:                      llm,
+		LLMName:                  entity.LLM,
+		Symbol:                   entity.Symbol,
+		SystemPrompt:             entity.SystemPrompt,
+		Failed:                   entity.Failed,
 	}
 }
 
@@ -71,33 +74,31 @@ func NewsFromEntity(entity *entities.News) News {
 	}
 
 	return News{
-		Id:          entity.Id,
-		Author:      entity.Author,
-		CreatedAt:   time.Unix(entity.CreatedAt, 0),
-		UpdatedAt:   time.Unix(entity.UpdatedAt, 0),
-		Headline:    entity.Headline,
-		Summary:     entity.Summary,
-		Content:     entity.Content,
-		URL:         entity.URL,
-		Symbols:     symbols,
-		Fingerprint: entity.Fingerprint,
-		Source:      entity.Source,
-		Sentiment:   sentiment,
+		Id:                 entity.Id,
+		Author:             entity.Author,
+		CreatedAtTimestamp: time.Unix(entity.CreatedAt, 0),
+		UpdatedAtTimestamp: time.Unix(entity.UpdatedAt, 0),
+		Headline:           entity.Headline,
+		Summary:            entity.Summary,
+		Content:            entity.Content,
+		URL:                entity.URL,
+		Symbols:            symbols,
+		Fingerprint:        entity.Fingerprint,
+		Source:             entity.Source,
+		Sentiment:          sentiment,
 	}
 }
 
 func SentimentToEntity(sentiment Sentiment) *entities.NewsSentiment {
-	llm := make([]string, len(sentiment.LLM))
-
-	for i, l := range sentiment.LLM {
-		llm[i] = l.Name
-	}
 	return &entities.NewsSentiment{
 		Timestamp:                sentiment.Timestamp.Unix(),
 		Sentiment:                sentiment.Sentiment,
 		SentimentAnalysisProcess: sentiment.SentimentAnalysisProcess,
 		Fingerprint:              sentiment.Fingerprint,
-		LLM:                      llm,
+		LLM:                      sentiment.LLMName,
+		Symbol:                   sentiment.Symbol,
+		SystemPrompt:             sentiment.SystemPrompt,
+		Failed:                   sentiment.Failed,
 	}
 }
 
@@ -115,8 +116,8 @@ func NewsToEntity(news News) *entities.News {
 	return &entities.News{
 		Id:          news.Id,
 		Author:      news.Author,
-		CreatedAt:   news.CreatedAt.Unix(),
-		UpdatedAt:   news.UpdatedAt.Unix(),
+		CreatedAt:   news.CreatedAtTimestamp.Unix(),
+		UpdatedAt:   news.UpdatedAtTimestamp.Unix(),
 		Headline:    news.Headline,
 		Summary:     news.Summary,
 		Content:     news.Content,
@@ -144,17 +145,67 @@ func NewsFromEntities(entities []*entities.News) []News {
 	return news
 }
 
+func newsContainsSentiment(news News, sentiment Sentiment) bool {
+	for _, s := range news.Sentiment {
+		if s.Fingerprint == sentiment.Fingerprint {
+			return true
+		}
+	}
+	return false
+}
+
+func InsertNewsWithSentiment(news *entities.News) {
+	dbNews := NewsFromEntity(news)
+
+	var existingNews News
+	if err := DB.Where("fingerprint = ?", dbNews.Fingerprint).Preload("Sentiment").First(&existingNews).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			InsertNews(news)
+		} else {
+			logging.Log().Error().
+				Err(err).
+				RawJSON("news", entities.GenerateJson(news)).
+				Msg("finding news")
+			return
+		}
+	}
+
+	DB.Transaction(func(tx *gorm.DB) error {
+		for _, sentiment := range dbNews.Sentiment {
+			sentiment.NewsFingerprint = existingNews.Fingerprint
+			if err := DB.Clauses(clause.OnConflict{
+				DoNothing: true,
+			}).Create(&LLM{Name: sentiment.LLMName}).Error; err != nil {
+				logging.Log().Error().
+					Err(err).
+					RawJSON("sentiment", entities.GenerateJson(SentimentToEntity(sentiment))).
+					Msg("inserting LLM")
+			}
+
+			if err := tx.Clauses(clause.OnConflict{
+				UpdateAll: true,
+			}).Create(&sentiment).Error; err != nil {
+				return err
+			}
+
+		}
+		return nil
+	})
+}
+
 func InsertNews(news *entities.News) {
 	dbNews := NewsFromEntity(news)
-	tx := DB.Clauses(clause.OnConflict{
-		DoNothing: true,
-	}).Create(&dbNews)
-
-	if tx.Error != nil {
+	if err := DB.Create(&dbNews).Error; err != nil {
 		logging.Log().Error().
-			Err(tx.Error).
+			Err(err).
 			RawJSON("news", entities.GenerateJson(news)).
 			Msg("inserting news")
+	}
+}
+
+func InsertBatchNewsWithSentiment(news []News) {
+	for _, n := range news {
+		InsertNewsWithSentiment(NewsToEntity(n))
 	}
 }
 
@@ -171,23 +222,46 @@ func InsertBatchNews(news []News) {
 	logging.Log().Debug().Int("count", len(news)).Type("entity", news[0]).Msg("finished inserting batch of news to db")
 }
 
-func GetNewsFromRequest(symbol string, req requests.DataRequest) ([]*entities.News, error) {
+func GetNewsFromDataRequest(symbol string, req requests.DataRequest) ([]*entities.News, error) {
+	fingerprint := req.GetFingerprint()
+	if fingerprint != "" {
+		return GetNewsFingerprint(fingerprint), nil
+	}
 	return GetNews(string(req.GetSource()),
 		symbol,
 		req.GetStartTime(),
 		req.GetEndTime()), nil
 }
 
-func GetNews(source string, symbol string, startTime int64, endTime int64) []*entities.News {
+func GetNewsFingerprint(fingerprint string) []*entities.News {
 	var news []News
 
 	tx := DB.Preload("Symbols").
 		Preload("Sentiment").
 		Preload("LLM").
-		Where("source = ? AND updated_at >= ? AND updated_at <= ?",
+		Where("fingerprint = ?", fingerprint).Find(&news)
+
+	if tx.Error != nil {
+		logging.Log().Error().
+			Err(tx.Error).
+			Str("fingerprint", fingerprint).
+			Msg("getting news from database")
+	}
+
+	return NewsToEntities(news)
+}
+
+func GetNews(source string, symbol string, startTime int64, endTime int64) []*entities.News {
+	var news []News
+	tx := DB.Preload("Symbols").
+		Joins("JOIN news_symbols ON news_symbols.news_fingerprint = news.fingerprint").
+		Preload("Sentiment").
+		Where("source = ? AND news_symbols.symbol = ? AND updated_at_timestamp >= ? AND updated_at_timestamp <= ?",
 			source,
+			symbol,
 			time.Unix(startTime, 0),
-			time.Unix(endTime, 0)).Order("updated_at DESC").Find(&news)
+			time.Unix(endTime, 0)).Order("updated_at_timestamp DESC").Find(&news)
+	logging.Log().Debug().Int("count", len(news)).Msg("finished getting news from db")
 
 	if tx.Error != nil {
 		logging.Log().Error().
