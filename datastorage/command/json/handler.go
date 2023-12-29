@@ -2,7 +2,9 @@ package json
 
 import (
 	JSON "encoding/json"
-	"tradingplatform/dataprovider/handler"
+	"fmt"
+
+	"tradingplatform/datastorage/handler"
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
@@ -26,12 +28,17 @@ func HandleJSONCommand(jsonStr string) string {
 	}
 
 	if jsonCommand.RootOperation == command.JSONOperationStream {
-		var streamRequest requests.StreamRequest
-		err := JSON.Unmarshal(jsonCommand.Request, &streamRequest)
+		return types.NewError(
+			fmt.Errorf("operation %s not supported", jsonCommand.RootOperation),
+		).Respond()
+	}
+	if jsonCommand.RootOperation == command.JSONOperationStreamSubscribe {
+		var streamSubscribeRequest requests.StreamSubscribeRequest
+		err := JSON.Unmarshal(jsonCommand.Request, &streamSubscribeRequest)
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
-		return handler.HandleStreamRequest(streamRequest.ApplyDefault())
+		return handler.HandleStreamRequest(streamSubscribeRequest).Respond()
 	}
 
 	if jsonCommand.RootOperation == command.JSONOperationData {

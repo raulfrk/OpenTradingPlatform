@@ -1,6 +1,6 @@
 package command
 
-import "tradingplatform/shared/requests"
+import "encoding/json"
 
 type JSONOperation string
 
@@ -13,8 +13,6 @@ const (
 )
 
 type JSONCommand struct {
-	RootOperation          JSONOperation                   `json:"operation"`
-	StreamRequest          requests.StreamRequest          `json:"streamRequest"`
-	DataRequest            requests.DataRequest            `json:"dataRequest"`
-	StreamSubscribeRequest requests.StreamSubscribeRequest `json:"streamSubscribeRequest"`
+	RootOperation JSONOperation   `json:"operation"`
+	Request       json.RawMessage `json:"request"`
 }
