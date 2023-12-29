@@ -25,6 +25,9 @@ message NewsSentiment {
     string Sentiment = 3;
     string SentimentAnalysisProcess = 4;
     string Fingerprint = 5;
-    repeated string LLM = 6;
+    string LLM = 6;
+    string Symbol = 7;
+    string SystemPrompt = 8;
+    bool Failed = 9;
 }
 

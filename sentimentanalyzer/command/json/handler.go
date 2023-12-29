@@ -5,13 +5,12 @@ import (
 	JSON "encoding/json"
 	"fmt"
 
-	"tradingplatform/datastorage/handler"
+	"tradingplatform/sentimentanalyzer/handler"
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 )
 
-// Handle a JSON command
 func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 	var jsonCommand command.JSONCommand
 	err := JSON.Unmarshal([]byte(jsonStr), &jsonCommand)
@@ -30,26 +29,30 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 
 	if jsonCommand.RootOperation == command.JSONOperationStream {
 		return types.NewError(
-			fmt.Errorf("operation %s not supported", jsonCommand.RootOperation),
+			fmt.Errorf("operation %s not yet implemented", jsonCommand.RootOperation),
 		).Respond()
 	}
 	if jsonCommand.RootOperation == command.JSONOperationStreamSubscribe {
-		var streamSubscribeRequest requests.StreamSubscribeRequest
-		err := JSON.Unmarshal(jsonCommand.Request, &streamSubscribeRequest)
-		if err != nil {
-			return types.NewError(err).Respond()
-		}
-		return handler.HandleStreamRequest(streamSubscribeRequest).Respond()
+		// var streamSubscribeRequest requests.StreamSubscribeRequest
+		// err := JSON.Unmarshal(jsonCommand.Request, &streamSubscribeRequest)
+		// if err != nil {
+		// 	return types.NewError(err).Respond()
+		// }
+		// return handler.HandleStreamRequest(streamSubscribeRequest).Respond()
+		return types.NewError(
+			fmt.Errorf("operation %s not yet implemented", jsonCommand.RootOperation),
+		).Respond()
 	}
 
 	if jsonCommand.RootOperation == command.JSONOperationData {
-		var dataRequest requests.DataRequest
+		var dataRequest requests.SentimentAnalysisRequest
 		err := JSON.Unmarshal(jsonCommand.Request, &dataRequest)
+		dataRequest = dataRequest.ApplyDefault()
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
 		var och chan types.DataResponse = make(chan types.DataResponse)
-		go handler.HandleDataRequest(dataRequest.ApplyDefault(), och)
+		go handler.HandleAnalysisRequest(ctx, &dataRequest, och)
 
 		select {
 		case response := <-och:

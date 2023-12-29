@@ -1,6 +1,7 @@
 package json
 
 import (
+	"context"
 	JSON "encoding/json"
 	"tradingplatform/dataprovider/handler"
 	"tradingplatform/shared/communication/command"
@@ -9,7 +10,7 @@ import (
 )
 
 // Handle a JSON command
-func HandleJSONCommand(jsonStr string) string {
+func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 	var jsonCommand command.JSONCommand
 	err := JSON.Unmarshal([]byte(jsonStr), &jsonCommand)
 	if err != nil {
