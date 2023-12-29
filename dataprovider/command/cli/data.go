@@ -2,19 +2,20 @@ package cli
 
 import (
 	"tradingplatform/dataprovider/handler"
-	"tradingplatform/dataprovider/provider"
-	"tradingplatform/dataprovider/requests"
+
+	"tradingplatform/shared/logging"
+
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 
 	"github.com/spf13/cobra"
 )
 
-// Stream-related commands (does nothing by itself)
+// Data-related commands (does nothing by itself)
 func NewDataCmd() *cobra.Command {
 	dataCmd := cobra.Command{
 		Use:   "data",
 		Short: "Command to handle data",
-		Long:  `This command allows the user to get data`,
 	}
 
 	dataCmd.AddCommand(NewDataGetCmd())
@@ -22,30 +23,41 @@ func NewDataCmd() *cobra.Command {
 	return &dataCmd
 }
 
-// Get all active streams
+// Create new data get command
 func NewDataGetCmd() *cobra.Command {
 	dataGetCmd := cobra.Command{
 		Use:   "get",
-		Short: "Get all active streams from a given source on a given account.",
+		Short: "Get data from dataprovider.",
 
 		Run: func(cmd *cobra.Command, args []string) {
 			// Get flags
 			source, _ := cmd.Flags().GetString("source")
-			assetClass, _ := cmd.Flags().GetString("assetClass")
+			assetClass, _ := cmd.Flags().GetString("asset-class")
 			symbols, _ := cmd.Flags().GetString("symbol")
 			operation := "get"
-			dataTypes, _ := cmd.Flags().GetString("dataType")
+			dataTypes, _ := cmd.Flags().GetString("data-type")
 			account, _ := cmd.Flags().GetString("account")
-			startTime, _ := cmd.Flags().GetInt64("startTime")
-			endTime, _ := cmd.Flags().GetInt64("endTime")
-			timeFrame, _ := cmd.Flags().GetString("timeFrame")
-			noConfirm, _ := cmd.Flags().GetBool("noConfirm")
+			startTime, _ := cmd.Flags().GetInt64("start-time")
+			endTime, _ := cmd.Flags().GetInt64("end-time")
+			timeFrame, _ := cmd.Flags().GetString("time-frame")
+			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 
 			// Generate stream request from flags
-			dataRequest, err := requests.NewDataRequestFromRaw(source, assetClass, []string{symbols}, operation, []string{dataTypes}, account, startTime, endTime, timeFrame, noConfirm)
-
+			dataRequest, err := requests.NewDataRequestFromRaw(source,
+				assetClass,
+				[]string{symbols},
+				operation,
+				[]string{dataTypes},
+				account,
+				startTime,
+				endTime,
+				timeFrame,
+				noConfirm)
+			logging.Log().Info().
+				RawJSON("dataRequest", dataRequest.JSON()).
+				Msg("receiving data request")
 			if err != nil {
-				cmd.Print(provider.NewStreamError(err).Respond())
+				cmd.Print(types.NewDataError(err).Respond())
 				return
 			}
 			var och chan types.DataResponse = make(chan types.DataResponse)
@@ -60,20 +72,29 @@ func NewDataGetCmd() *cobra.Command {
 			}
 		},
 	}
-	dataGetCmd.Flags().StringP("source", "s", requests.DataDefaultSource, "Source of the data stream")
-	dataGetCmd.Flags().StringP("symbol", "y", requests.DataDefaultSymbol, "Symbols to stream")
-	dataGetCmd.Flags().StringP("assetClass", "a", requests.DataDefaultAssetClass, "Type of asset to stream")
-	dataGetCmd.Flags().StringP("dataType", "t", requests.DataDefaultDataType, "Type of data to stream")
-	dataGetCmd.Flags().StringP("account", "c", requests.DataDefaultAccount, "Account to use for the stream")
-	dataGetCmd.Flags().Int64P("startTime", "b", requests.DataDefaultStartTime, "Start time for the data")
-	dataGetCmd.Flags().Int64P("endTime", "e", requests.DataDefaultEndTime, "End time for the data")
-	dataGetCmd.Flags().StringP("timeFrame", "f", requests.DataDefaultTimeFrame, "Time frame")
-	dataGetCmd.Flags().BoolP("noConfirm", "o", requests.DataDefaultNoConfirm, "Whether to confirm the operation")
+	dataGetCmd.Flags().StringP("source", "s", requests.DataDefaultSource,
+		"Source of the data")
+	dataGetCmd.Flags().StringP("symbol", "y", requests.DataDefaultSymbol,
+		"Symbols")
+	dataGetCmd.Flags().StringP("asset-class", "a", requests.DataDefaultAssetClass,
+		"Asset class")
+	dataGetCmd.Flags().StringP("data-type", "t", requests.DataDefaultDataType,
+		"Type of data (e.g. bar, trade...)")
+	dataGetCmd.Flags().StringP("account", "c", requests.DataDefaultAccount,
+		"Account to use for the stream")
+	dataGetCmd.Flags().Int64P("start-time", "b", requests.DataDefaultStartTime,
+		"Start time for the data")
+	dataGetCmd.Flags().Int64P("end-time", "e", requests.DataDefaultEndTime,
+		"End time for the data")
+	dataGetCmd.Flags().StringP("time-frame", "f", requests.DataDefaultTimeFrame,
+		"Time frame (only available for bar data)")
+	dataGetCmd.Flags().BoolP("no-confirm", "o", requests.DataDefaultNoConfirm,
+		"Setting this flag will make so that data is streamed as soon as ready")
 
-	dataGetCmd.MarkFlagRequired("assetClass")
+	dataGetCmd.MarkFlagRequired("asset-class")
 	dataGetCmd.MarkFlagRequired("symbol")
-	dataGetCmd.MarkFlagRequired("startTime")
-	dataGetCmd.MarkFlagRequired("endTime")
+	dataGetCmd.MarkFlagRequired("start-time")
+	dataGetCmd.MarkFlagRequired("end-time")
 
 	return &dataGetCmd
 }

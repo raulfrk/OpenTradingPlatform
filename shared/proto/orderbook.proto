@@ -19,5 +19,6 @@ message Orderbook {
     bool Reset = 6;
     string Fingerprint = 7;
     string Source = 8;
+    string AssetClass = 9;
 }
 

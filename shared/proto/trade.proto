@@ -17,4 +17,5 @@ message Trade {
     string Fingerprint = 10;
     string Update = 11;
     string Source = 13;
+    string AssetClass = 14;
 }

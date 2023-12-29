@@ -13,19 +13,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var commandHandler *utils.Handler[string, string]
+var commandHandler *utils.Handler[string]
 
 // Initialize command handling
 func StartCommandHandler(component types.Component, cliHandler func() *cobra.Command, jsonHandler func(string) string) {
-	commandHandler = utils.NewHandler[string, string]()
+	commandHandler = utils.NewHandler[string]()
 	go handleCommand(commandHandler, component, cliHandler, jsonHandler)
 }
 
-func GetCommandHandler() *utils.Handler[string, string] {
+func GetCommandHandler() *utils.Handler[string] {
 	return commandHandler
 }
 
-func handleCommandContent(m *nats.Msg, handler *utils.Handler[string, string], cliHandler func() *cobra.Command, jsonHandler func(string) string) {
+func handleCommandContent(m *nats.Msg, handler *utils.Handler[string], cliHandler func() *cobra.Command, jsonHandler func(string) string) {
 	cmd := string(m.Data)
 	if len(cmd) > 4 && cmd[:4] == "json" {
 		handleJSONCommand(m, jsonHandler)
@@ -39,14 +39,14 @@ func handleJSONCommand(m *nats.Msg, jsonHandler func(string) string) {
 	response := jsonHandler(string(m.Data[4:]))
 	if len(response) == 0 {
 		m.Respond([]byte(types.NewError(
-			fmt.Errorf("no response from command due to invalid command"),
+			fmt.Errorf("no response from command due to invalid command, or component might have quit"),
 		).Respond()))
 		return
 	}
 	m.Respond([]byte(response))
 }
 
-func handleCLICommand(m *nats.Msg, handler *utils.Handler[string, string], cliHandler func() *cobra.Command) {
+func handleCLICommand(m *nats.Msg, handler *utils.Handler[string], cliHandler func() *cobra.Command) {
 	str := strings.Split(string(m.Data), " ")
 	rootCmd := cliHandler()
 	rootCmd.SetArgs(str)
@@ -77,7 +77,7 @@ func handleCLICommand(m *nats.Msg, handler *utils.Handler[string, string], cliHa
 	m.Respond(buf.Bytes())
 }
 
-func handleCommand(handler *utils.Handler[string, string], component types.Component, cliHandler func() *cobra.Command, jsonHandler func(string) string) {
+func handleCommand(handler *utils.Handler[string], component types.Component, cliHandler func() *cobra.Command, jsonHandler func(string) string) {
 	nc, err := nats.Connect(nats.DefaultURL, nats.FlusherTimeout(0))
 	ctx := handler.Ctx()
 	if err != nil {
