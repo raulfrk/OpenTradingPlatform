@@ -9,6 +9,7 @@ import (
 	astream "github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 )
 
+// Utility to verify whether a symbol is valid for a given asset class
 func IsSymbolValid(symbol string, assetClass types.AssetClass) bool {
 	client := astream.NewClient(astream.ClientOpts{
 		APIKey:    os.Getenv("ALPACA_KEY"),

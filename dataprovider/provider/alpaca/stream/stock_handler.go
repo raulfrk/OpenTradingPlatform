@@ -10,14 +10,16 @@ import (
 
 	"tradingplatform/dataprovider/data"
 	"tradingplatform/dataprovider/provider"
-	"tradingplatform/dataprovider/requests"
+	"tradingplatform/dataprovider/provider/alpaca"
 	sharedent "tradingplatform/shared/entities"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
 	astream "github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
 )
 
+// Handle a stock stream request for Alpaca and delegate based on operation
 func handleAlpacaStockStreamRequest(req requests.StreamRequest) types.StreamResponse {
 	account := req.GetAccount()
 
@@ -96,17 +98,23 @@ func handleAlpacaStockStreamRequest(req requests.StreamRequest) types.StreamResp
 	}
 }
 
-func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock *sync.RWMutex, req requests.StreamRequest) types.StreamResponse {
+// Handle a stock stream add request for Alpaca
+func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
+	clientLock *sync.RWMutex, req requests.StreamRequest) types.StreamResponse {
 	dtypes := req.GetDataTypes()
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("adding stocks stream")
 	for _, dtype := range dtypes {
 		var err error
-		logging.Log().Debug().RawJSON("request", req.JSON()).Str("dtype", string(dtype)).Msg("subscribing")
+		logging.Log().Debug().
+			RawJSON("request", req.JSON()).
+			Str("dtype", string(dtype)).
+			Msg("subscribing")
 		clientLock.Lock()
 		switch dtype {
 		case types.Bar:
 			err = client.SubscribeToBars(func(b astream.Bar) {
-				msg, err := handleOnStreamData[astream.Bar, *sharedent.Bar](b, types.Stock, types.Bar, b.Symbol)
+				msg, err := handleOnStreamData[astream.Bar,
+					*sharedent.Bar](b, types.Stock, types.Bar, b.Symbol)
 				if err != nil {
 					js, _ := b.MarshalJSON()
 					logging.Log().Error().
@@ -115,11 +123,12 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling bar stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 		case types.DailyBars:
 			err = client.SubscribeToDailyBars(func(b astream.Bar) {
-				msg, err := handleOnStreamData[astream.Bar, *sharedent.Bar](b, types.Stock, types.DailyBars, b.Symbol)
+				msg, err := handleOnStreamData[astream.Bar,
+					*sharedent.Bar](b, types.Stock, types.DailyBars, b.Symbol)
 				if err != nil {
 					js, _ := b.MarshalJSON()
 					logging.Log().Error().
@@ -128,11 +137,12 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling daily bar stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 		case types.UpdatedBars:
 			err = client.SubscribeToUpdatedBars(func(b astream.Bar) {
-				msg, err := handleOnStreamData[astream.Bar, *sharedent.Bar](b, types.Stock, types.UpdatedBars, b.Symbol)
+				msg, err := handleOnStreamData[astream.Bar,
+					*sharedent.Bar](b, types.Stock, types.UpdatedBars, b.Symbol)
 				if err != nil {
 					js, _ := b.MarshalJSON()
 					logging.Log().Error().
@@ -141,11 +151,12 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling updated bar stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 		case types.Trades:
 			err = client.SubscribeToTrades(func(t astream.Trade) {
-				msg, err := handleOnStreamData[astream.Trade, *sharedent.Trade](t, types.Stock, types.Trades, t.Symbol)
+				msg, err := handleOnStreamData[astream.Trade,
+					*sharedent.Trade](t, types.Stock, types.Trades, t.Symbol)
 				if err != nil {
 					js, _ := t.MarshalJSON()
 					logging.Log().Error().
@@ -154,12 +165,13 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling trade stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 
 		case types.Quotes:
 			err = client.SubscribeToQuotes(func(q astream.Quote) {
-				msg, err := handleOnStreamData[astream.Quote, *sharedent.Quote](q, types.Stock, types.Trades, q.Symbol)
+				msg, err := handleOnStreamData[astream.Quote,
+					*sharedent.Quote](q, types.Stock, types.Quotes, q.Symbol)
 				if err != nil {
 					js, _ := q.MarshalJSON()
 					logging.Log().Error().
@@ -168,11 +180,12 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling quote stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 		case types.LULD:
 			err = client.SubscribeToLULDs(func(luld astream.LULD) {
-				msg, err := handleOnStreamData[astream.LULD, *sharedent.LULD](luld, types.Stock, types.Trades, luld.Symbol)
+				msg, err := handleOnStreamData[astream.LULD,
+					*sharedent.LULD](luld, types.Stock, types.LULD, luld.Symbol)
 				if err != nil {
 					js, _ := luld.MarshalJSON()
 					logging.Log().Error().
@@ -181,11 +194,12 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling LULD stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 		case types.Status:
 			err = client.SubscribeToStatuses(func(s astream.TradingStatus) {
-				msg, err := handleOnStreamData[astream.TradingStatus, *sharedent.TradingStatus](s, types.Stock, types.Trades, s.Symbol)
+				msg, err := handleOnStreamData[astream.TradingStatus,
+					*sharedent.TradingStatus](s, types.Stock, types.Status, s.Symbol)
 				if err != nil {
 					js, _ := s.MarshalJSON()
 					logging.Log().Error().
@@ -194,7 +208,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 						Msg("handling status stream")
 					return
 				}
-				producer.GetStreamHandler(msg.Topic).Ich <- msg
+				producer.GetStreamHandler(msg.Topic).Ch <- msg
 			}, req.GetSymbols()...)
 		default:
 			err = fmt.Errorf("data type %s not supported yet", dtype)
@@ -207,7 +221,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 				Msg("subscribing to Alpaca stocks stream")
 			return provider.NewStreamError(err)
 		}
-		data.AddActiveStreamForDType(req, dtype)
+		data.AddDataProviderStreamForDType(req, dtype)
 	}
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
@@ -217,14 +231,21 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient, clientLock 
 	)
 }
 
-func handleAlpacaStockStreamRemoveRequest(client *astream.StocksClient, clientLock *sync.RWMutex, req requests.StreamRequest) types.StreamResponse {
+// Handle a stock stream remove request for Alpaca
+func handleAlpacaStockStreamRemoveRequest(client *astream.StocksClient,
+	clientLock *sync.RWMutex,
+	req requests.StreamRequest) types.StreamResponse {
+
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("removing crypto stream")
 	symbols := req.GetSymbols()
 
 	for _, dtype := range req.GetDataTypes() {
 		clientLock.Lock()
 		var err error
-		logging.Log().Debug().RawJSON("request", req.JSON()).Str("dtype", string(dtype)).Msg("unsubscribing")
+		logging.Log().Debug().
+			RawJSON("request", req.JSON()).
+			Str("dtype", string(dtype)).
+			Msg("unsubscribing")
 		switch dtype {
 		case types.Bar:
 			err = client.UnsubscribeFromBars(symbols...)
@@ -249,7 +270,11 @@ func handleAlpacaStockStreamRemoveRequest(client *astream.StocksClient, clientLo
 				Msg("unsubscribing from stock stream")
 			return provider.NewStreamError(err)
 		}
-		data.RemoveActiveStreamForDType(req, dtype)
+		for _, symbol := range symbols {
+			tTopic := alpaca.NewStockStreamTopic(dtype, symbol).Generate()
+			producer.StopTopicHandler(tTopic)
+		}
+		data.RemoveDataProviderStreamForDType(req, dtype)
 	}
 
 	return provider.NewStreamResponseAssetClass(

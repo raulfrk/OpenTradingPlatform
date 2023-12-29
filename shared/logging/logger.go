@@ -3,14 +3,24 @@ package logging
 import (
 	"io"
 
+	"tradingplatform/shared/entities"
+	"tradingplatform/shared/types"
+
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
 )
 
 var log *zerolog.Logger
 
+var component types.Component
+
 func SetLogger(l *zerolog.Logger) {
 	log = l
+}
+
+func SetComponent(c types.Component) {
+	component = c
 }
 
 func Log() *zerolog.Logger {
@@ -33,7 +43,17 @@ func NewNatsWriter(nc *nats.Conn, topic string) *NatsWriter {
 }
 
 func (nw *NatsWriter) Write(p []byte) (n int, err error) {
-	err = nw.nc.Publish(nw.topic, p)
+	message := entities.Message{
+		Topic:    nw.topic,
+		Payload:  p,
+		DataType: string(types.Log),
+	}
+	b, err := proto.Marshal(&message)
+	if err != nil {
+		return 0, err
+	}
+
+	err = nw.nc.Publish(nw.topic, b)
 
 	if err != nil {
 		return 0, err
@@ -41,8 +61,8 @@ func (nw *NatsWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func NewMultiLevelLogger(writers ...io.Writer) zerolog.Logger {
+func NewMultiLevelLogger(component types.Component, writers ...io.Writer) zerolog.Logger {
 	multi := zerolog.MultiLevelWriter(writers...)
-	logger := zerolog.New(multi).With().Timestamp().Stack().Logger()
+	logger := zerolog.New(multi).With().Str("component", string(component)).Timestamp().Stack().Logger()
 	return logger
 }

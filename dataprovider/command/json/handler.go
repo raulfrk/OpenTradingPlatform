@@ -3,34 +3,19 @@ package json
 import (
 	JSON "encoding/json"
 	"tradingplatform/dataprovider/handler"
-	"tradingplatform/dataprovider/requests"
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/types"
 )
 
-type JSONOperation string
-
-const (
-	JSONOperationQuit   JSONOperation = "quit"
-	JSONOperationStream JSONOperation = "stream"
-	JSONOperationData   JSONOperation = "data"
-)
-
-type JSONCommand struct {
-	RootOperation JSONOperation          `json:"operation"`
-	StreamRequest requests.StreamRequest `json:"streamRequest"`
-	DataRequest   requests.DataRequest   `json:"dataRequest"`
-}
-
+// Handle a JSON command
 func HandleJSONCommand(jsonStr string) string {
-	var jsonCommand JSONCommand
+	var jsonCommand command.JSONCommand
 	err := JSON.Unmarshal([]byte(jsonStr), &jsonCommand)
-	//TODO: Handle error
 	if err != nil {
-		return err.Error()
+		return types.NewError(err).Respond()
 	}
 
-	if jsonCommand.RootOperation == JSONOperationQuit {
+	if jsonCommand.RootOperation == command.JSONOperationQuit {
 		command.GetCommandHandler().Cancel()
 		return types.NewResponse(
 			types.Success,
@@ -39,11 +24,11 @@ func HandleJSONCommand(jsonStr string) string {
 		).Respond()
 	}
 
-	if jsonCommand.RootOperation == JSONOperationStream {
+	if jsonCommand.RootOperation == command.JSONOperationStream {
 		return handler.HandleStreamRequest(jsonCommand.StreamRequest.ApplyDefault())
 	}
 
-	if jsonCommand.RootOperation == JSONOperationData {
+	if jsonCommand.RootOperation == command.JSONOperationData {
 		var och chan types.DataResponse = make(chan types.DataResponse)
 		go handler.HandleDataRequest(jsonCommand.DataRequest.ApplyDefault(), och)
 
@@ -54,6 +39,5 @@ func HandleJSONCommand(jsonStr string) string {
 			return ""
 		}
 	}
-
 	return ""
 }

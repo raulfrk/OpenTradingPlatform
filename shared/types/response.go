@@ -40,7 +40,7 @@ type Response struct {
 type StreamResponse struct {
 	Response
 	// TODO: Implement response that provides list of topics
-	Topics  []string
+	Topics  string
 	Streams string
 }
 
@@ -80,6 +80,26 @@ func NewStreamResponse(status OpStatus, message string, err error, streams strin
 	newResponse.Status = status
 
 	return newResponse
+}
+
+func NewStreamResponseTopic(status OpStatus, message string, err error, topics string) StreamResponse {
+	errStr := ""
+	if err != nil {
+		errStr = err.Error()
+	}
+	newResponse := StreamResponse{
+
+		Topics: topics,
+	}
+	newResponse.Err = errStr
+	newResponse.Message = message
+	newResponse.Status = status
+
+	return newResponse
+}
+
+func NewStreamTopicError(err error, topics string) StreamResponse {
+	return NewStreamResponseTopic(Failure, "", err, topics)
 }
 
 func (r Response) Respond() string {

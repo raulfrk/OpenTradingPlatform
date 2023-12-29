@@ -3,6 +3,8 @@ package requests
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
+	"strings"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
 )
@@ -32,6 +34,16 @@ type StreamRequest struct {
 	Account    Account               `json:"account"`
 }
 
+type StreamSubscribeAgents struct {
+	AgentCount int    `json:"agentCount"`
+	Topic      string `json:"topic"`
+}
+
+type StreamSubscribeRequest struct {
+	StreamSubscribeWithAgents []StreamSubscribeAgents `json:"streamSubscribeWithAgents"`
+	Operation                 types.StreamRequestOp   `json:"operation"`
+}
+
 func (sr StreamRequest) ApplyDefault() StreamRequest {
 	if sr.Source == "" {
 		sr.Source = StreamDefaultSource
@@ -54,6 +66,45 @@ func (sr *StreamRequest) JSON() []byte {
 		return []byte{}
 	}
 	return js
+}
+
+func (sr *StreamSubscribeRequest) JSON() []byte {
+	js, err := json.Marshal(sr)
+	if err != nil {
+		logging.Log().Error().
+			Err(err).
+			Msg("marshalling stream subscribe request to json")
+		return []byte{}
+	}
+	return js
+}
+
+func NewStreamSubscribeRequestFromRaw(iTopicAgents []string,
+	operation types.StreamRequestOp) (StreamSubscribeRequest, error) {
+	var streamSubscribeWithAgents []StreamSubscribeAgents
+	for _, t := range iTopicAgents {
+		// Split topic in topic and agents
+		splitT := strings.Split(t, ",")
+		agents := 5
+		topic := splitT[0]
+		if len(splitT) == 2 {
+			agentsStr := splitT[1]
+			agentsInt, err := strconv.Atoi(agentsStr)
+			if err != nil {
+				return StreamSubscribeRequest{}, err
+			}
+			agents = agentsInt
+		}
+		streamSubscribeWithAgents = append(streamSubscribeWithAgents, StreamSubscribeAgents{
+			AgentCount: agents,
+			Topic:      topic,
+		})
+	}
+	streamSubscribeRequest := StreamSubscribeRequest{
+		StreamSubscribeWithAgents: streamSubscribeWithAgents,
+		Operation:                 operation,
+	}
+	return streamSubscribeRequest, nil
 }
 
 func NewStreamRequest(source DataSource,
@@ -99,6 +150,14 @@ func NewStreamRequestFromRaw(iSource string,
 	}
 
 	dataTypes := make([]types.DataType, len(iDataTypes))
+
+	if len(iDataTypes) == 0 {
+		return StreamRequest{}, errors.New("no data types specified")
+	}
+
+	if len(iSymbols) == 0 {
+		return StreamRequest{}, errors.New("no symbols specified")
+	}
 
 	for i, dType := range iDataTypes {
 		dataTypeMap := GetDataTypeMap()[source]

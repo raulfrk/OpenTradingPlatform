@@ -34,6 +34,5 @@ func NewQuitCommand() *cobra.Command {
 			command.GetCommandHandler().Cancel()
 		},
 	}
-
 	return &quitCmd
 }

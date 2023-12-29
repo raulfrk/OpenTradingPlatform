@@ -1,21 +1,15 @@
 package data
 
 import (
-	"sync"
-
-	"tradingplatform/dataprovider/requests"
+	"tradingplatform/shared/data"
 	"tradingplatform/shared/logging"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-var streamDB *gorm.DB
-var streamDBLock = sync.RWMutex{}
-
-type ActiveStream struct {
+type DataProviderStream struct {
 	DataSource requests.DataSource `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
 	Account    requests.Account    `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
 	DataType   types.DataType      `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
@@ -23,11 +17,12 @@ type ActiveStream struct {
 	Symbol     string              `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
 }
 
-func GetActiveStreams() []ActiveStream {
-	var activeStreams []ActiveStream
-	streamDBLock.Lock()
-	result := streamDB.Find(&activeStreams, ActiveStream{})
-	streamDBLock.Unlock()
+// Get all active streams of the dataprovider from local database
+func GetDataProviderStreams() []DataProviderStream {
+	var activeStreams []DataProviderStream
+	data.LocalDBLock.Lock()
+	result := data.LocalDB.Find(&activeStreams, DataProviderStream{})
+	data.LocalDBLock.Unlock()
 	if result.Error != nil {
 		logging.Log().Error().
 			Err(result.Error).
@@ -36,11 +31,13 @@ func GetActiveStreams() []ActiveStream {
 	return activeStreams
 }
 
-func GetActiveStreamsAssetClass(assetClass types.AssetClass) []ActiveStream {
-	var activeStreams []ActiveStream
-	streamDBLock.Lock()
-	result := streamDB.Where("asset_class = ?", assetClass).Find(&activeStreams, ActiveStream{})
-	streamDBLock.Unlock()
+// Get all active streams of the dataprovider from local database for a given asset class
+func GetDataProviderStreamsAssetClass(assetClass types.AssetClass) []DataProviderStream {
+	var activeStreams []DataProviderStream
+	data.LocalDBLock.Lock()
+	result := data.LocalDB.Where("asset_class = ?", assetClass).
+		Find(&activeStreams, DataProviderStream{})
+	data.LocalDBLock.Unlock()
 	if result.Error != nil {
 		logging.Log().Error().
 			Err(result.Error).
@@ -49,9 +46,10 @@ func GetActiveStreamsAssetClass(assetClass types.AssetClass) []ActiveStream {
 	return activeStreams
 }
 
-func AddActiveStreamForDType(req requests.StreamRequest, dataType types.DataType) {
-	streamDBLock.Lock()
-	tx := streamDB.Begin()
+// Add active stream to local database
+func AddDataProviderStreamForDType(req requests.StreamRequest, dataType types.DataType) {
+	data.LocalDBLock.Lock()
+	tx := data.LocalDB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Log().Error().
@@ -62,7 +60,7 @@ func AddActiveStreamForDType(req requests.StreamRequest, dataType types.DataType
 	}()
 
 	for _, symbol := range req.GetSymbols() {
-		res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&ActiveStream{
+		res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&DataProviderStream{
 			DataSource: req.GetSource(),
 			Account:    req.GetAccount(),
 			AssetClass: req.GetAssetClass(),
@@ -76,7 +74,7 @@ func AddActiveStreamForDType(req requests.StreamRequest, dataType types.DataType
 				RawJSON("request", req.JSON()).
 				Str("symbol", symbol).
 				Msg("adding active stream to local database")
-			streamDBLock.Unlock()
+			data.LocalDBLock.Unlock()
 			return
 		}
 	}
@@ -87,12 +85,13 @@ func AddActiveStreamForDType(req requests.StreamRequest, dataType types.DataType
 			RawJSON("request", req.JSON()).
 			Msg("committing transaction used to add active stream to local database")
 	}
-	streamDBLock.Unlock()
+	data.LocalDBLock.Unlock()
 }
 
-func RemoveActiveStreamForDType(req requests.StreamRequest, dataType types.DataType) {
-	streamDBLock.Lock()
-	tx := streamDB.Begin()
+// Remove active stream from local database
+func RemoveDataProviderStreamForDType(req requests.StreamRequest, dataType types.DataType) {
+	data.LocalDBLock.Lock()
+	tx := data.LocalDB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Log().Error().
@@ -108,14 +107,14 @@ func RemoveActiveStreamForDType(req requests.StreamRequest, dataType types.DataT
 		req.GetAssetClass(),
 		dataType,
 		req.GetSymbols()).
-		Delete(&ActiveStream{}).
+		Delete(&DataProviderStream{}).
 		Error; err != nil {
 		tx.Rollback()
 		logging.Log().Error().
 			Err(err).
 			RawJSON("request", req.JSON()).
 			Msg("removing active stream from local database")
-		streamDBLock.Unlock()
+		data.LocalDBLock.Unlock()
 		return
 	}
 
@@ -126,33 +125,5 @@ func RemoveActiveStreamForDType(req requests.StreamRequest, dataType types.DataT
 			Msg("committing transaction used to remove active stream to local database")
 		return
 	}
-	streamDBLock.Unlock()
-}
-
-func InitializeDatabase() (*gorm.DB, func()) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-
-	if err != nil {
-		logging.Log().Error().Err(err).Msg("failed to connect to local database")
-		panic(err)
-	}
-
-	sqlDB, err := db.DB()
-	if err != nil {
-		logging.Log().Error().
-			Err(err).
-			Msg("failed to get sql database from gorm database")
-		panic(err)
-	}
-
-	cleanup := func() {
-		sqlDB.Close()
-	}
-
-	// Migrate the schema
-	db.AutoMigrate(&ActiveStream{})
-
-	streamDB = db
-
-	return db, cleanup
+	data.LocalDBLock.Unlock()
 }

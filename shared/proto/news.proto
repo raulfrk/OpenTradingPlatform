@@ -16,5 +16,15 @@ message News {
     repeated string Symbols = 9;
     string Fingerprint = 10;
     string Source = 11;
+    repeated NewsSentiment Sentiments = 12;
+}
+
+message NewsSentiment {
+    int64 Timestamp = 1;
+    News News = 2;
+    string Sentiment = 3;
+    string SentimentAnalysisProcess = 4;
+    string Fingerprint = 5;
+    repeated string LLM = 6;
 }
 

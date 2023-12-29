@@ -5,10 +5,11 @@ import (
 	"tradingplatform/dataprovider/provider"
 	"tradingplatform/dataprovider/provider/alpaca/data"
 	alpacaStream "tradingplatform/dataprovider/provider/alpaca/stream"
-	"tradingplatform/dataprovider/requests"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 )
 
+// Handle a stream request by delegating to function based on the data provider
 func HandleStreamRequest(req requests.StreamRequest) string {
 	source := req.GetSource()
 
@@ -23,6 +24,7 @@ func HandleStreamRequest(req requests.StreamRequest) string {
 	}
 }
 
+// Handle a data request by delegating to function based on the data provider
 func HandleDataRequest(dataRequest requests.DataRequest, och chan types.DataResponse) {
 	switch dataRequest.GetSource() {
 	case requests.Alpaca:

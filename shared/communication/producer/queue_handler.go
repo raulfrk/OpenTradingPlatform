@@ -15,17 +15,17 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var queues = make(map[string]*utils.Handler[[]*sharedent.Message, []*sharedent.Message])
+var queues = make(map[string]*utils.Handler[[]*sharedent.Message])
 var queuesMutex sync.RWMutex
 
-func GetQueueHandler(topic string, noConfirm bool) (*utils.Handler[[]*sharedent.Message, []*sharedent.Message], types.DataResponse) {
+func GetQueueHandler(topic string, noConfirm bool) (*utils.Handler[[]*sharedent.Message], types.DataResponse) {
 
 	queuesMutex.RLock()
 	_, ok := queues[topic]
 	queuesMutex.RUnlock()
 
 	if !ok {
-		newQueueHandler := utils.NewHandler[[]*sharedent.Message, []*sharedent.Message]()
+		newQueueHandler := utils.NewHandler[[]*sharedent.Message]()
 		queuesMutex.Lock()
 		queues[topic] = newQueueHandler
 		queuesMutex.Unlock()
@@ -44,13 +44,13 @@ func GetQueueHandler(topic string, noConfirm bool) (*utils.Handler[[]*sharedent.
 	)
 }
 
-func StartQueueHandler(handler *utils.Handler[[]*sharedent.Message, []*sharedent.Message], noConfirm bool) {
+func StartQueueHandler(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
 	ich := make(chan *[]*sharedent.Message)
-	handler.SetInputChannel(ich)
+	handler.SetChannel(ich)
 	go handleQueue(handler, noConfirm)
 }
 
-func handleQueue(handler *utils.Handler[[]*sharedent.Message, []*sharedent.Message], noConfirm bool) {
+func handleQueue(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
 	nc, err := nats.Connect(nats.DefaultURL)
 	var topic string
 	if err != nil {
@@ -58,7 +58,7 @@ func handleQueue(handler *utils.Handler[[]*sharedent.Message, []*sharedent.Messa
 		return
 	}
 	defer nc.Close()
-	msgs := <-handler.Ich
+	msgs := <-handler.Ch
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 
 	first := (*msgs)[0]
