@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "shared/communication";
+
+message StreamRequestExternal {
+  string Source = 1;
+  string AssetClass = 2;
+  repeated string Symbols = 3;
+  string Operation = 4;
+  repeated string DataTypes = 5;
+  string Account = 6;
+}

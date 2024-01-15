@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package entities;
+
+option go_package = "shared/communication";
+
+message DataRequestExternal {
+  string Fingerprint = 1;
+  string Source = 2;
+  string AssetClass = 3;
+  repeated string Symbols = 4;
+  string Operation = 5;
+  repeated string DataTypes = 6;
+  string Account = 7;
+  int64 StartTime = 8;
+  int64 EndTime = 9;
+  string TimeFrame = 10;
+  bool NoConfirm = 11;
+}
+
+message DataResponseExternal {
+  string Err = 1;
+  string Message = 2;
+  string Status = 3;
+  string ResponseTopic = 4;
+}

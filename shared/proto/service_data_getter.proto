@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package communication;
+
+option go_package = "shared/communication";
+
+import "shared/proto/data.proto";
+
+service DataGetter {
+    rpc GetData (entities.DataRequestExternal) returns (entities.DataResponseExternal) {}
+}

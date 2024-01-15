@@ -1,13 +1,12 @@
 package main
 
 import (
+	"google.golang.org/grpc"
 	"os"
 	"os/signal"
 	"syscall"
-	"tradingplatform/dataprovider/command/cli"
-	"tradingplatform/dataprovider/command/json"
 	"tradingplatform/dataprovider/data"
-	"tradingplatform/shared/communication/command"
+	shcomm "tradingplatform/shared/communication"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
 	"tradingplatform/shared/utils"
@@ -34,12 +33,15 @@ func main() {
 
 	cleanup := data.InitializeDataProviderLocalDatabase()
 	defer cleanup()
-	command.StartCommandHandler(types.DataProvider, cli.NewRootCmd, json.HandleJSONCommand)
-	handler := command.GetCommandHandler()
-	go func() {
-		<-sigs
-		handler.Cancel()
-	}()
-	<-handler.Ctx().Done()
-	handler.Wg.Wait()
+
+	server := grpc.NewServer()
+	shcomm.StartCommunicationHandler(server)
+	//command.StartCommandHandler(types.DataProvider, cli.NewRootCmd, json.HandleJSONCommand)
+	//handler := command.GetCommandHandler()
+	//go func() {
+	//	<-sigs
+	//	handler.Cancel()
+	//}()
+	//<-handler.Ctx().Done()
+	//handler.Wg.Wait()
 }
