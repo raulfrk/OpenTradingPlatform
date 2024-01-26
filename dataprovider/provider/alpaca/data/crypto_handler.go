@@ -16,8 +16,8 @@ import (
 
 // Handle a crypto data request for Alpaca
 func handleAlpacaCryptoDataRequest(req requests.DataRequest) types.DataResponse {
-	symbol := req.GetSymbols()[0]
-	dtype := req.GetDataTypes()[0]
+	symbol := req.GetSymbol()
+	dtype := req.GetDataType()
 	var messages *[]*sharedent.Message
 	var response types.DataResponse
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("handling alpaca crypto data request")

@@ -98,7 +98,7 @@ func handleAlpacaNewsStreamAddRequest(client *astream.NewsClient,
 
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("adding news stream")
 	var symbols []string
-	for _, symbol := range req.GetSymbols() {
+	for _, symbol := range req.GetSymbol() {
 		// Remove the slash from the symbol (for Crypto)
 		symbols = append(symbols, strings.Replace(symbol, "/", "", -1))
 	}
@@ -144,7 +144,7 @@ func handleAlpacaNewsStreamRemoveRequest(client *astream.NewsClient,
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("removing news stream")
 	var symbols []string
 
-	for _, symbol := range req.GetSymbols() {
+	for _, symbol := range req.GetSymbol() {
 		// Remove the slash from the symbol (for Crypto)
 		symbols = append(symbols, strings.Replace(symbol, "/", "", -1))
 	}

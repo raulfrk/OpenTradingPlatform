@@ -13,8 +13,8 @@ import (
 )
 
 func HandleDataRequest(dataRequest requests.DataRequest, och chan types.DataResponse) {
-	symbol := dataRequest.GetSymbols()[0]
-	dtype := dataRequest.GetDataTypes()[0]
+	symbol := dataRequest.GetSymbol()
+	dtype := dataRequest.GetDataType()
 	var messages *[]*entities.Message
 	var response types.DataResponse
 

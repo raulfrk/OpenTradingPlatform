@@ -101,8 +101,8 @@ func handleAlpacaCryptoStreamAddRequest(client *astream.CryptoClient,
 	req requests.StreamRequest) types.StreamResponse {
 
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("adding crypto stream")
-	dtypes := req.GetDataTypes()
-	symbols := req.GetSymbols()
+	dtypes := req.GetDataType()
+	symbols := req.GetSymbol()
 
 	for _, dtype := range dtypes {
 		var err error
@@ -220,9 +220,9 @@ func handleAlpacaCryptoStreamRemoveRequest(client *astream.CryptoClient,
 	req requests.StreamRequest) types.StreamResponse {
 
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("removing crypto stream")
-	symbols := req.GetSymbols()
+	symbols := req.GetSymbol()
 
-	for _, dtype := range req.GetDataTypes() {
+	for _, dtype := range req.GetDataType() {
 		clientLock.Lock()
 		var err error
 		logging.Log().Debug().
