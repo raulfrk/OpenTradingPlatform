@@ -33,9 +33,9 @@ func NewDataGetCmd() *cobra.Command {
 			// Get flags
 			source, _ := cmd.Flags().GetString("source")
 			assetClass, _ := cmd.Flags().GetString("asset-class")
-			symbols, _ := cmd.Flags().GetString("symbol")
+			symbol, _ := cmd.Flags().GetString("symbol")
 			operation := "get"
-			dataTypes, _ := cmd.Flags().GetString("data-type")
+			dataType, _ := cmd.Flags().GetString("data-type")
 			account, _ := cmd.Flags().GetString("account")
 			startTime, _ := cmd.Flags().GetInt64("start-time")
 			endTime, _ := cmd.Flags().GetInt64("end-time")
@@ -45,9 +45,9 @@ func NewDataGetCmd() *cobra.Command {
 			// Generate stream request from flags
 			dataRequest, err := requests.NewDataRequestFromRaw(source,
 				assetClass,
-				[]string{symbols},
+				symbol,
 				operation,
-				[]string{dataTypes},
+				dataType,
 				account,
 				startTime,
 				endTime,

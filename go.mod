@@ -17,6 +17,10 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator/v10 v10.17.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
@@ -33,6 +37,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.3 // indirect
+	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -59,6 +64,7 @@ require (
 	github.com/yargevad/filepathx v1.0.0 // indirect
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3 // indirect
+	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

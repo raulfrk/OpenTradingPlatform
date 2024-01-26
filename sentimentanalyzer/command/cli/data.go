@@ -55,9 +55,9 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 			dataReq, err := requests.NewDataRequestFromRaw(
 				source,
 				string(types.News),
-				[]string{symbol},
+				symbol,
 				"get",
-				[]string{string(types.RawText)},
+				string(types.RawText),
 				string(requests.DataDefaultAccount),
 				startTime,
 				endTime,

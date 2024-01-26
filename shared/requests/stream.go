@@ -191,7 +191,7 @@ func (sr *StreamRequest) GetAssetClass() types.AssetClass {
 	return sr.AssetClass
 }
 
-func (sr *StreamRequest) GetSymbols() []string {
+func (sr *StreamRequest) GetSymbol() []string {
 	return sr.Symbols
 }
 
@@ -199,7 +199,7 @@ func (sr *StreamRequest) GetOperation() types.StreamRequestOp {
 	return sr.Operation
 }
 
-func (sr *StreamRequest) GetDataTypes() []types.DataType {
+func (sr *StreamRequest) GetDataType() []types.DataType {
 	return sr.DataTypes
 }
 func (sr *StreamRequest) GetStrDataTypes() []string {

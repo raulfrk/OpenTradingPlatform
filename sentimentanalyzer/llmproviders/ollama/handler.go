@@ -19,7 +19,7 @@ func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.
 
 	switch req.SentimentAnalysisProcess {
 	case types.Plain:
-		newsText = fmt.Sprintf("Symbol:%s\nNews:%s", news.Headline, req.Symbols[0])
+		newsText = fmt.Sprintf("Symbol:%s\nNews:%s", news.Headline, req.GetSymbol())
 	case types.Semantic:
 		newsText = fmt.Sprintf("Symbols:%s\nNews:%s", news.Headline, strings.Join(news.Symbols, ","))
 

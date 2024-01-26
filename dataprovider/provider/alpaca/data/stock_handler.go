@@ -22,8 +22,8 @@ func handleAlpacaStockDataRequest(req requests.DataRequest) types.DataResponse {
 		APIKey:    os.Getenv("ALPACA_KEY"),
 		APISecret: os.Getenv("ALPACA_SECRET"),
 	})
-	symbol := req.GetSymbols()[0]
-	dtype := req.GetDataTypes()[0]
+	symbol := req.GetSymbol()
+	dtype := req.GetDataType()
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("handling alpaca stock data request")
 	switch dtype {
 	case types.Bar:

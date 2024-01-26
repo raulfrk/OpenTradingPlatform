@@ -38,7 +38,7 @@ func handleAlpacaNewsDataRequest(req requests.DataRequest) types.DataResponse {
 			APIKey:    os.Getenv("ALPACA_KEY"),
 			APISecret: os.Getenv("ALPACA_SECRET"),
 		})}
-	symbol := req.GetSymbols()[0]
+	symbol := req.GetSymbol()
 
 	messages, response = handleDataFetch[marketdata.GetNewsRequest,
 		marketdata.News, *sharedent.News](client.getNewsWrapper, symbol, marketdata.GetNewsRequest{
