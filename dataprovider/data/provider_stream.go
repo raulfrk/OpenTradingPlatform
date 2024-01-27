@@ -10,11 +10,11 @@ import (
 )
 
 type DataProviderStream struct {
-	DataSource requests.DataSource `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
-	Account    requests.Account    `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
-	DataType   types.DataType      `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
-	AssetClass types.AssetClass    `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
-	Symbol     string              `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
+	DataSource types.Source     `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
+	Account    requests.Account `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
+	DataType   types.DataType   `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
+	AssetClass types.AssetClass `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
+	Symbol     string           `gorm:"uniqueIndex:idx_data_source_account_data_type_symbol"`
 }
 
 // Get all active streams of the dataprovider from local database

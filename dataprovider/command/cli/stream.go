@@ -42,7 +42,7 @@ func NewStreamAddCmd() *cobra.Command {
 			account, _ := cmd.Flags().GetString("account")
 
 			if len(dataTypes) == 0 {
-				providerDatatypes := requests.GetDataTypeMap()[requests.DataSource(source)]
+				providerDatatypes := requests.GetDataTypeMap()[types.Source(source)]
 				for _, dtype := range providerDatatypes(types.AssetClass(assetClass)) {
 					dataTypes = append(dataTypes, string(dtype))
 				}
@@ -136,7 +136,7 @@ func NewStreamDeleteCmd() *cobra.Command {
 			account, _ := cmd.Flags().GetString("account")
 
 			if len(dataTypes) == 0 {
-				providerDatatypes := requests.GetDataTypeMap()[requests.DataSource(source)]
+				providerDatatypes := requests.GetDataTypeMap()[types.Source(source)]
 				for _, dtype := range providerDatatypes(types.AssetClass(assetClass)) {
 					dataTypes = append(dataTypes, string(dtype))
 				}

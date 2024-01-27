@@ -46,7 +46,7 @@ func HandleDataRequest(dataRequest requests.DataRequest, och chan types.DataResp
 			dataRequest.AssetClass, "")
 	case types.RawText:
 		messages, response = data.HandleDataFetch[requests.DataRequest,
-			*entities.News](data.GetNewsFromRequest,
+			*entities.News](data.GetNewsFromDataRequest,
 			symbol,
 			dataRequest,
 			types.RawText,
