@@ -6,9 +6,9 @@ import (
 	"sync"
 	"tradingplatform/dataprovider/provider"
 	"tradingplatform/dataprovider/provider/alpaca"
-	"tradingplatform/dataprovider/requests"
 	sharedent "tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 
 	astream "github.com/alpacahq/alpaca-trade-api-go/v3/marketdata/stream"
@@ -26,8 +26,26 @@ var alpacaCryptoMapOfLocks map[requests.Account]*sync.RWMutex = make(map[request
 var alpacaStockMapOfLocks map[requests.Account]*sync.RWMutex = make(map[requests.Account]*sync.RWMutex)
 var alpacaNewsMapOfLocks map[requests.Account]*sync.RWMutex = make(map[requests.Account]*sync.RWMutex)
 
-// TODO: Add description
-func handleOnStreamData[T any, V sharedent.Payloader](entity T, assetClass types.AssetClass, dtype types.DataType, symbol string) (*sharedent.Message, error) {
+// handleOnStreamData is a function that handles streaming data for a given entity.
+// It maps the entity with the provided symbol, sets the source and exchange based on the asset class,
+// generates the topic based on the asset class and data type, and returns a generated message.
+// If any error occurs during the process, an error is logged and returned.
+//
+// Parameters:
+// - entity: The entity to be handled.
+// - assetClass: The asset class of the entity.
+// - dtype: The data type of the entity.
+// - symbol: The symbol associated with the entity.
+//
+// Returns:
+// - *sharedent.Message: The generated message.
+// - error: An error if any occurred during the process.
+func handleOnStreamData[T any,
+	V sharedent.Payloader](entity T,
+	assetClass types.AssetClass,
+	dtype types.DataType,
+	symbol string) (*sharedent.Message, error) {
+
 	newEntity := alpaca.MapEntityWithReturnEntity(entity, symbol)
 	if newEntity == nil {
 		err := fmt.Errorf("error mapping entity %v", entity)
@@ -78,13 +96,21 @@ func handleOnStreamData[T any, V sharedent.Payloader](entity T, assetClass types
 			exchangeSettable.SetExchange(alpaca.DEFAULT_EXCHANGE_CRYPTO)
 		}
 	}
+	var topic string
+	switch assetClass {
+	case types.Crypto:
+		topic = alpaca.NewCryptoStreamTopic(dtype, symbol).Generate()
+	case types.News:
+		topic = alpaca.NewNewsStreamTopic(dtype, symbol).Generate()
+	default:
+		topic = alpaca.NewStockStreamTopic(dtype, symbol).Generate()
+	}
 
-	topic := alpaca.NewStockStreamTopic(dtype, symbol).Generate()
-
-	return alpaca.GenerateMessage(payloaderEntity, dtype, topic), nil
+	return sharedent.GenerateMessage(payloaderEntity, dtype, topic), nil
 
 }
 
+// Provide a response with the active streams
 func handleAlpacaStreamGetRequest(req requests.StreamRequest, assetClass types.AssetClass) types.StreamResponse {
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
@@ -92,15 +118,14 @@ func handleAlpacaStreamGetRequest(req requests.StreamRequest, assetClass types.A
 		nil, assetClass)
 }
 
-// Handle a stream request for Alpaca
+// Handle a stream request for Alpaca and delegate to the appropriate handler based on asset class
 func HandleAlpacaStreamRequest(req requests.StreamRequest) types.StreamResponse {
 	var response types.StreamResponse
 	// Validate symbols
-
-	for _, symbol := range req.GetSymbols() {
+	for _, symbol := range req.GetSymbol() {
 		if !alpaca.IsSymbolValid(symbol, req.GetAssetClass()) {
 			return provider.NewStreamError(
-				fmt.Errorf("symbol %s not valid for asset type %s", symbol, req.GetAssetClass()),
+				fmt.Errorf("symbol %s not valid for asset class %s", symbol, req.GetAssetClass()),
 			)
 		}
 	}
@@ -114,7 +139,7 @@ func HandleAlpacaStreamRequest(req requests.StreamRequest) types.StreamResponse 
 		response = handleAlpacaNewsStreamRequest(req)
 	default:
 		response = provider.NewStreamError(
-			errors.New("invalid asset type"),
+			errors.New("invalid asset class"),
 		)
 	}
 	return response

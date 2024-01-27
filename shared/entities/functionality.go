@@ -4,10 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"tradingplatform/shared/logging"
+	"tradingplatform/shared/types"
 
+	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func HashStruct(data interface{}) (string, error) {
@@ -20,12 +21,24 @@ func HashStruct(data interface{}) (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
+type FingerprintablePayloader interface {
+	Payloader
+	Fingerprintable
+}
+
 type Payloader interface {
 	ToPayload() []byte
 }
 
 func (b *Bar) SetFingerprint() {
 	b.Fingerprint, _ = HashStruct(b)
+}
+
+func (s *NewsSentiment) SetFingerprint() {
+	oldTimestamp := s.Timestamp
+	s.Timestamp = 0
+	s.Fingerprint, _ = HashStruct(s)
+	s.Timestamp = oldTimestamp
 }
 
 func (o *Orderbook) SetFingerprint() {
@@ -108,6 +121,10 @@ func (t *Trade) SetExchange(exchange string) {
 	t.Exchange = exchange
 }
 
+type TimeframeSettable interface {
+	SetTimeframe(string)
+}
+
 type ExchangeSettable interface {
 	SetExchange(string)
 }
@@ -127,13 +144,25 @@ type Fingerprintable interface {
 func GeneratePayload(p ProtoReflectable) []byte {
 	payload, err := proto.Marshal(p)
 	if err != nil {
-		logging.Log().Error().Err(err).Msg("marshalling")
+		log.Error().Err(err).Msg("marshalling")
+	}
+	return payload
+}
+
+func GenerateJson(p ProtoReflectable) []byte {
+	payload, err := json.Marshal(p)
+	if err != nil {
+		log.Error().Err(err).Msg("marshalling to json")
 	}
 	return payload
 }
 
 func (b *Bar) ToPayload() []byte {
 	return GeneratePayload(b)
+}
+
+func (b *Bar) SetTimeframe(timeFrame string) {
+	b.Timeframe = timeFrame
 }
 
 func (o *Orderbook) ToPayload() []byte {
@@ -158,4 +187,18 @@ func (s *TradingStatus) ToPayload() []byte {
 
 func (n *News) ToPayload() []byte {
 	return GeneratePayload(n)
+}
+
+func (n *NewsSentiment) ToPayload() []byte {
+	return GeneratePayload(n)
+}
+
+func GenerateMessage(p Payloader, entityType types.DataType, topic string) *Message {
+	payload := p.ToPayload()
+	msg := Message{
+		Topic:    topic,
+		Payload:  payload,
+		DataType: string(entityType),
+	}
+	return &msg
 }

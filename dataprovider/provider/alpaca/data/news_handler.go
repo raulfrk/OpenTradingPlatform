@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 	"time"
-	"tradingplatform/dataprovider/requests"
 	"tradingplatform/shared/communication/producer"
 	sharedent "tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
@@ -24,10 +24,11 @@ func (c *ClientWrapper) getNewsWrapper(symbol string, req marketdata.GetNewsRequ
 	// (as long as max req number is not exceeded)
 	req.NoTotalLimit = true
 	req.PageLimit = 50
-	req.IncludeContent = true
+	req.IncludeContent = false
 	return c.client.GetNews(req)
 }
 
+// Handle crypto news request
 func handleAlpacaNewsDataRequest(req requests.DataRequest) types.DataResponse {
 	var response types.DataResponse
 	var messages *[]*sharedent.Message
@@ -37,9 +38,10 @@ func handleAlpacaNewsDataRequest(req requests.DataRequest) types.DataResponse {
 			APIKey:    os.Getenv("ALPACA_KEY"),
 			APISecret: os.Getenv("ALPACA_SECRET"),
 		})}
-	symbol := req.GetSymbols()[0]
+	symbol := req.GetSymbol()
 
-	messages, response = handleDataFetch[marketdata.GetNewsRequest, marketdata.News, *sharedent.News](client.getNewsWrapper, symbol, marketdata.GetNewsRequest{
+	messages, response = handleDataFetch[marketdata.GetNewsRequest,
+		marketdata.News, *sharedent.News](client.getNewsWrapper, symbol, marketdata.GetNewsRequest{
 		PageLimit: 10000,
 		Start:     time.Unix(req.GetStartTime(), 0),
 		End:       time.Unix(req.GetEndTime(), 0),
@@ -49,7 +51,7 @@ func handleAlpacaNewsDataRequest(req requests.DataRequest) types.DataResponse {
 	}
 	if len(*messages) == 0 {
 		return types.NewDataError(
-			fmt.Errorf("no data found for symbol %s", symbol),
+			fmt.Errorf("no news data found for symbol %s", symbol),
 		)
 	}
 	responseTopic := (*messages)[0].Topic
@@ -57,7 +59,7 @@ func handleAlpacaNewsDataRequest(req requests.DataRequest) types.DataResponse {
 	if handlerResponse.Err != "" {
 		return handlerResponse
 	}
-	handler.Ich <- messages
+	handler.Ch <- messages
 
 	return response
 }

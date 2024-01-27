@@ -17,4 +17,6 @@ message Bar {
     uint64 TradeCount = 10;
     string Fingerprint = 11;
     string Source = 12;
+    string AssetClass = 13;
+    string Timeframe = 14;
 }

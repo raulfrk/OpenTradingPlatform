@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 	"tradingplatform/dataprovider/provider/alpaca"
-	"tradingplatform/dataprovider/requests"
 	"tradingplatform/shared/communication/producer"
 	"tradingplatform/shared/logging"
+	"tradingplatform/shared/requests"
 
 	sharedent "tradingplatform/shared/entities"
 	"tradingplatform/shared/types"
@@ -14,28 +14,35 @@ import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/marketdata"
 )
 
+// Handle a crypto data request for Alpaca
 func handleAlpacaCryptoDataRequest(req requests.DataRequest) types.DataResponse {
-	symbol := req.GetSymbols()[0]
-	dtype := req.GetDataTypes()[0]
+	symbol := req.GetSymbol()
+	dtype := req.GetDataType()
 	var messages *[]*sharedent.Message
 	var response types.DataResponse
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("handling alpaca crypto data request")
 	switch dtype {
 	case types.Bar:
-		messages, response = handleDataFetch[marketdata.GetCryptoBarsRequest, marketdata.CryptoBar, *sharedent.Bar](marketdata.GetCryptoBars, symbol, marketdata.GetCryptoBarsRequest{
+		messages, response = handleDataFetch[marketdata.GetCryptoBarsRequest,
+			marketdata.CryptoBar,
+			*sharedent.Bar](marketdata.GetCryptoBars, symbol, marketdata.GetCryptoBarsRequest{
 			TimeFrame: alpaca.GetAlpacaTimeFrame(req.GetTimeFrame()),
 			PageLimit: 10000,
 			Start:     time.Unix(req.GetStartTime(), 0),
 			End:       time.Unix(req.GetEndTime(), 0),
 		}, types.Bar, types.Crypto, req.GetTimeFrame())
 	case types.Trades:
-		messages, response = handleDataFetch[marketdata.GetCryptoTradesRequest, marketdata.CryptoTrade, *sharedent.Trade](marketdata.GetCryptoTrades, symbol, marketdata.GetCryptoTradesRequest{
+		messages, response = handleDataFetch[marketdata.GetCryptoTradesRequest,
+			marketdata.CryptoTrade,
+			*sharedent.Trade](marketdata.GetCryptoTrades, symbol, marketdata.GetCryptoTradesRequest{
 			PageLimit: 10000,
 			Start:     time.Unix(req.GetStartTime(), 0),
 			End:       time.Unix(req.GetEndTime(), 0),
 		}, types.Trades, types.Crypto, req.GetTimeFrame())
 	case types.Quotes:
-		messages, response = handleDataFetch[marketdata.GetCryptoQuotesRequest, marketdata.CryptoQuote, *sharedent.Quote](marketdata.GetCryptoQuotes, symbol, marketdata.GetCryptoQuotesRequest{
+		messages, response = handleDataFetch[marketdata.GetCryptoQuotesRequest,
+			marketdata.CryptoQuote,
+			*sharedent.Quote](marketdata.GetCryptoQuotes, symbol, marketdata.GetCryptoQuotesRequest{
 			PageLimit: 10000,
 			Start:     time.Unix(req.GetStartTime(), 0),
 			End:       time.Unix(req.GetEndTime(), 0),
@@ -58,7 +65,7 @@ func handleAlpacaCryptoDataRequest(req requests.DataRequest) types.DataResponse 
 	if handlerResponse.Err != "" {
 		return handlerResponse
 	}
-	handler.Ich <- messages
+	handler.Ch <- messages
 
 	return response
 }

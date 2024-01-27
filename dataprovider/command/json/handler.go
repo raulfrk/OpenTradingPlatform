@@ -1,37 +1,24 @@
 package json
 
 import (
+	"context"
 	JSON "encoding/json"
 	"tradingplatform/dataprovider/handler"
-	"tradingplatform/dataprovider/requests"
-	"tradingplatform/shared/communication/command"
+	shcommand "tradingplatform/shared/communication/command"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 )
 
-type JSONOperation string
-
-const (
-	JSONOperationQuit   JSONOperation = "quit"
-	JSONOperationStream JSONOperation = "stream"
-	JSONOperationData   JSONOperation = "data"
-)
-
-type JSONCommand struct {
-	RootOperation JSONOperation          `json:"operation"`
-	StreamRequest requests.StreamRequest `json:"streamRequest"`
-	DataRequest   requests.DataRequest   `json:"dataRequest"`
-}
-
-func HandleJSONCommand(jsonStr string) string {
-	var jsonCommand JSONCommand
+// Handle a JSON command
+func HandleJSONCommand(ctx context.Context, jsonStr string) string {
+	var jsonCommand shcommand.JSONCommand
 	err := JSON.Unmarshal([]byte(jsonStr), &jsonCommand)
-	//TODO: Handle error
 	if err != nil {
-		return err.Error()
+		return types.NewError(err).Respond()
 	}
 
-	if jsonCommand.RootOperation == JSONOperationQuit {
-		command.GetCommandHandler().Cancel()
+	if jsonCommand.RootOperation == shcommand.JSONOperationQuit {
+		shcommand.GetCommandHandler().Cancel()
 		return types.NewResponse(
 			types.Success,
 			"Gracefully shutting down DataProvider",
@@ -39,21 +26,38 @@ func HandleJSONCommand(jsonStr string) string {
 		).Respond()
 	}
 
-	if jsonCommand.RootOperation == JSONOperationStream {
-		return handler.HandleStreamRequest(jsonCommand.StreamRequest.ApplyDefault())
+	if jsonCommand.RootOperation == shcommand.JSONOperationStream {
+		var streamRequest requests.StreamRequest
+		err := JSON.Unmarshal(jsonCommand.Request, &streamRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
+		validatedStreamRequest, err := requests.NewStreamRequestFromExisting(&streamRequest, requests.DefaultForEmptyStreamRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
+		return handler.HandleStreamRequest(validatedStreamRequest)
 	}
 
-	if jsonCommand.RootOperation == JSONOperationData {
+	if jsonCommand.RootOperation == shcommand.JSONOperationData {
+		var dataRequest requests.DataRequest
+		err := JSON.Unmarshal(jsonCommand.Request, &dataRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
+		validDataRequest, err := requests.NewDataRequestFromExisting(&dataRequest, requests.DefaultForEmptyDataRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
 		var och chan types.DataResponse = make(chan types.DataResponse)
-		go handler.HandleDataRequest(jsonCommand.DataRequest.ApplyDefault(), och)
+		go handler.HandleDataRequest(validDataRequest, och)
 
 		select {
 		case response := <-och:
 			return response.Respond()
-		case <-command.GetCommandHandler().Ctx().Done():
+		case <-shcommand.GetCommandHandler().Ctx().Done():
 			return ""
 		}
 	}
-
 	return ""
 }

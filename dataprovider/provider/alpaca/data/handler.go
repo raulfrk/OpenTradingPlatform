@@ -3,9 +3,9 @@ package data
 import (
 	"fmt"
 	"tradingplatform/dataprovider/provider/alpaca"
-	"tradingplatform/dataprovider/requests"
 	sharedent "tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
+	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 )
 
@@ -21,6 +21,8 @@ func handleDataFetch[T any,
 	req T,
 	dtype types.DataType, assetClass types.AssetClass,
 	timeFrame types.TimeFrame) (*[]*sharedent.Message, types.DataResponse) {
+
+	// Use the getter function to get the data
 	result, err := fun(symbol, req)
 	if err != nil {
 		logging.Log().Error().
@@ -32,8 +34,8 @@ func handleDataFetch[T any,
 			Msg("getting data from alpaca")
 		return nil, types.NewDataError(err)
 	}
-	var responseTopic string = ""
-	var queueID string = ""
+	var responseTopic = ""
+	var queueID = ""
 
 	var messages []*sharedent.Message
 	for _, element := range result {
@@ -74,6 +76,12 @@ func handleDataFetch[T any,
 				exchangeSettable.SetExchange(alpaca.DEFAULT_EXCHANGE_CRYPTO)
 			}
 		}
+
+		// Set timeframe if possible
+		timeframeSettable, ok := newEntity.(sharedent.TimeframeSettable)
+		if ok {
+			timeframeSettable.SetTimeframe(string(timeFrame))
+		}
 		queueID = entity.GetFingerprint()
 
 		payloader, ok := newEntity.(sharedent.Payloader)
@@ -89,13 +97,16 @@ func handleDataFetch[T any,
 			)
 		}
 
-		messages = append(messages, alpaca.GenerateMessage(payloader, dtype, responseTopic))
+		messages = append(messages, sharedent.GenerateMessage(payloader, dtype,
+			responseTopic))
 	}
 
 	if dtype == types.Bar {
-		responseTopic = alpaca.NewBarDataTopic(assetClass, timeFrame, symbol, queueID, len(messages)).Generate()
+		responseTopic = alpaca.NewBarDataTopic(assetClass, timeFrame, symbol,
+			queueID, len(messages)).Generate()
 	} else {
-		responseTopic = alpaca.NewDataTopic(assetClass, dtype, symbol, queueID, len(messages)).Generate()
+		responseTopic = alpaca.NewDataTopic(assetClass, dtype, symbol, queueID,
+			len(messages)).Generate()
 	}
 	for _, message := range messages {
 		message.Topic = responseTopic
@@ -108,6 +119,7 @@ func handleDataFetch[T any,
 	)
 }
 
+// Delegate a data request to the appropriate handler based on asset class
 func HandleAlpacaDataRequest(dataRequest requests.DataRequest) types.DataResponse {
 
 	switch dataRequest.GetAssetClass() {

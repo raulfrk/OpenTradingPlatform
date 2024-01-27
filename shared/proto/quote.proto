@@ -18,5 +18,6 @@ message Quote {
     string Tape = 11;
     string Fingerprint = 12;
     string Source = 13;
+    string AssetClass = 14;
 }
 
