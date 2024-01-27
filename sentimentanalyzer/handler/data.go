@@ -20,14 +20,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// HandleAnalysisRequest handles a sentiment analysis request
 func HandleAnalysisRequest(ctx context.Context, req *requests.SentimentAnalysisRequest, och chan<- types.DataResponse) {
 	switch req.ModelProvider {
 	case types.Ollama:
 		och <- HandleAnalysisNewsFromDB(ctx, req, ollama.HandleAnalysisNews)
 	default:
-		och <- types.NewDataError(
-			fmt.Errorf("provided model provider \"%s\" is not currently supported", req.ModelProvider),
-		)
+		err := fmt.Errorf("provided model provider \"%s\" is not currently supported", req.ModelProvider)
+		logging.Log().Debug().Err(err).RawJSON("request", req.JSON()).Msg("while handling sentiment analysis request")
+		och <- types.NewDataError(err)
 	}
 }
 
@@ -69,10 +70,9 @@ func worker(ctx context.Context,
 			resultsCh <- n
 			continue
 		}
-		logging.Log().Debug().Str("news", n.Fingerprint).Msg("processing news")
 
 		if n.Headline == "" {
-			logging.Log().Debug().Msg("news headline is empty")
+			logging.Log().Debug().RawJSON("request", req.JSON()).Str("newsFingerprint", req.Fingerprint).Msg("news headline is empty")
 			continue
 		}
 		childCtx, cancel := context.WithCancel(ctx)
@@ -85,7 +85,6 @@ func worker(ctx context.Context,
 		if isValidJSON(analyzedSentiment) {
 			handleJSONResponse(analyzedSentiment, n, req, resultsCh, errCh)
 		} else {
-			logging.Log().Debug().Str("news", n.Headline).Str("sentiment", analyzedSentiment).Msg("received plain response from LLM")
 			handlePlainResponse(analyzedSentiment, n, req, resultsCh, errCh)
 		}
 		cancel()
@@ -105,21 +104,33 @@ func findMatchingSentiment(n *entities.News, newSentiment *entities.NewsSentimen
 }
 
 func handleJSONResponse(analyzedSentiment string, n *entities.News, req *requests.SentimentAnalysisRequest, resultsCh chan<- *entities.News, errCh chan<- error) {
-	mmap := castToJSON(analyzedSentiment)
+	semanticSentiments := castToJSON(analyzedSentiment)
 	if req.SentimentAnalysisProcess == types.Plain && req.FailFastOnBadSentiment {
-		err := fmt.Errorf("for news \"%s\" got sentiment \"%s\"; %v", n.Headline, analyzedSentiment, "received semantic response when expected plain response")
-		logging.Log().Debug().Err(err).Msg("while handling JSON response from LLM")
+		err := fmt.Errorf("produced sentiment resulted in JSON format when expected plain response for news; consider adjusting the prompt")
+		logging.Log().Debug().
+			Str("newsHeadline", n.Headline).
+			Str("newsFingerprint", n.Fingerprint).
+			RawJSON("request", req.JSON()).
+			Str("sentiment", analyzedSentiment).
+			Err(err).Msg("while handling JSON response from LLM")
 		errCh <- err
 		return
 	}
 	failed := req.SentimentAnalysisProcess == types.Plain
 
 	// Assumes the JSON is in the format {"symbol": "sentiment"}
-	for k, v := range mmap {
+	for k, v := range semanticSentiments {
 		vString, ok := v.(string)
 		if !ok {
-			logging.Log().Debug().Str("symbol", k).
-				Interface("value", v).Msg("error while casting json value to string (expected structure: {\"symbol\": \"sentiment\"})")
+			err := fmt.Errorf("error casting sentiment to string")
+			logging.Log().Info().Interface("sentiment", v).
+				RawJSON("request", req.JSON()).
+				Str("newsHeadline", n.Headline).
+				Str("newsFingerprint", n.Fingerprint).
+				Str("symbol", k).
+				Str("sentiment", analyzedSentiment).
+				Err(err).
+				Msg("while casting sentiment to string in JSON response handler")
 			failed = true
 		}
 		if failed {
@@ -151,16 +162,25 @@ func handleJSONResponse(analyzedSentiment string, n *entities.News, req *request
 func handlePlainResponse(analyzedSentiment string, n *entities.News, req *requests.SentimentAnalysisRequest, resultsCh chan<- *entities.News, errCh chan<- error) {
 	extractedSentiment, err := sentiment.ExtractSentimentFromLLMAnswer(analyzedSentiment)
 	if req.SentimentAnalysisProcess == types.Semantic && req.FailFastOnBadSentiment {
-		err := fmt.Errorf("for news \"%s\" got sentiment \"%s\"; %v", n.Headline, analyzedSentiment, "received plain response when expected semantic response in JSON format")
-		logging.Log().Debug().Err(err).Msg("while handling response from LLM")
+		err := fmt.Errorf("produced sentiment resulted in plain format when expected JSON response for news; consider adjusting the prompt to ensure plain sentiment is produced")
+		logging.Log().Debug().
+			Str("newsHeadline", n.Headline).
+			Str("newsFingerprint", n.Fingerprint).
+			RawJSON("request", req.JSON()).
+			Str("sentiment", analyzedSentiment).
+			Err(err).Msg("while handling plain response from LLM")
 		errCh <- err
 		return
 	}
 	failed := req.SentimentAnalysisProcess == types.Semantic
 
 	if err != nil {
-		err = fmt.Errorf("for news \"%s\"; %v", n.Headline, err)
-		logging.Log().Debug().Err(err).Msg("while extracting sentiment")
+		logging.Log().Debug().
+			Str("newsHeadline", n.Headline).
+			Str("newsFingerprint", n.Fingerprint).
+			RawJSON("request", req.JSON()).
+			Str("sentiment", analyzedSentiment).
+			Err(err).Msg("while extracting sentiment from plain response from LLM")
 		failed = true
 	}
 
@@ -194,18 +214,20 @@ func handlePlainResponse(analyzedSentiment string, n *entities.News, req *reques
 // Handle analysis request for news in the database
 func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalysisRequest, analysisF func(context.Context, *entities.News, *requests.SentimentAnalysisRequest) (string, error)) types.DataResponse {
 	var news []*entities.News
+	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("fetching and analyzing news from database")
 
 	err := requests.RequestData(ctx, utils.NewCommandTopic(types.DataStorage), req.DataRequest, func(msg *entities.Message) {
 		var entity entities.News
 		err := proto.Unmarshal(msg.Payload, &entity)
 		if err != nil {
-			logging.Log().Debug().Err(err).Msg("error while unmarshalling news")
+			logging.Log().Debug().Err(err).Msg("while unmarshalling news from database")
 			return
 		}
 		news = append(news, &entity)
 	})
 
 	if err != nil {
+		logging.Log().Debug().Err(err).Msg("while requesting data from datastorage")
 		return types.NewDataError(fmt.Errorf("error while requesting data from datastorage %v", err))
 	}
 
@@ -219,6 +241,8 @@ func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalys
 	}
 
 	close(jobs)
+	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("starting sentiment analysis")
+
 	errCh := make(chan error)
 	done := make(chan struct{})
 
@@ -238,6 +262,7 @@ func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalys
 
 	select {
 	case <-done:
+		logging.Log().Debug().RawJSON("request", req.JSON()).Msg("finished processing news, generating response queue")
 		var news []*entities.News
 		for n := range results {
 			news = append(news, n)
@@ -268,7 +293,7 @@ func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalys
 
 	case err := <-errCh:
 		requests.DrainChannel(jobs)
-		logging.Log().Debug().Err(err).Msg("error while processing news")
+		logging.Log().Debug().RawJSON("request", req.JSON()).Err(err).Msg("failed processing news")
 		return types.NewDataError(err)
 	}
 

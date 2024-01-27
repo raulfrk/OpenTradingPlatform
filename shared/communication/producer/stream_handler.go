@@ -14,6 +14,7 @@ import (
 var streams = make(map[string]*utils.Handler[sharedent.Message])
 var streamsMutex sync.RWMutex
 
+// GetStreamHandler returns the stream handler for a topic
 func GetStreamHandler(topic string) *utils.Handler[sharedent.Message] {
 	splitTopic := strings.Split(topic, ".")
 	formattedTopic := strings.Join(splitTopic[:len(splitTopic)-1], ".")
@@ -35,12 +36,14 @@ func GetStreamHandler(topic string) *utils.Handler[sharedent.Message] {
 	return handler
 }
 
+// StartTopicHandler starts a new stream handler for a topic
 func StartTopicHandler(handler *utils.Handler[sharedent.Message]) {
 	ich := make(chan *sharedent.Message)
 	handler.SetChannel(ich)
 	go handleTopic(handler)
 }
 
+// StopTopicHandler stops a stream handler for a topic
 func StopTopicHandler(topic string) {
 	streamsMutex.RLock()
 	handler, ok := streams[topic]

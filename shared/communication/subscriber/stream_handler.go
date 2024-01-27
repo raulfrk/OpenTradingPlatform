@@ -18,6 +18,7 @@ var streamsMutex sync.RWMutex
 var dataQueues = make(map[string][]*entities.Message)
 var dataQueuesMutex sync.RWMutex
 
+// GetStreamHandler returns the stream producer handler for a topic
 func GetStreamHandler(topic string) *utils.Handler[entities.Message] {
 	streamsMutex.RLock()
 	handler, ok := streams[topic]
@@ -34,7 +35,7 @@ func GetStreamHandler(topic string) *utils.Handler[entities.Message] {
 	return handler
 }
 
-// TODO: separate into multiple functions
+// GetStreamHandlerRoundRobin returns the stream producer handler for a topic with round robin functionality
 func GetStreamHandlerRoundRobin(topic string, maxAgents int) *utils.Handler[entities.Message] {
 	streamsMutex.RLock()
 	handler, ok := streams[topic]
@@ -51,12 +52,14 @@ func GetStreamHandlerRoundRobin(topic string, maxAgents int) *utils.Handler[enti
 	return handler
 }
 
+// StartTopicHandler starts a new stream producer handler for a topic
 func StartTopicHandler(handler *utils.Handler[entities.Message], topic string) {
 	ich := make(chan *entities.Message)
 	handler.SetChannel(ich)
 	go handleTopic(handler, topic)
 }
 
+// StopTopicHandler stops a stream producer handler for a topic
 func StopTopicHandler(topic string) {
 	streamsMutex.Lock()
 	defer streamsMutex.Unlock()
@@ -98,7 +101,7 @@ func handleTopic(handler *utils.Handler[entities.Message], topic string) {
 	nc.Close()
 }
 
-// TODO: separate into multiple functions
+// AttatchFunctionality attatches functionality to a stream handler
 func AttatchFunctionalityRoundRobin(topic string, f func(*entities.Message), numAgents int) {
 	handler := GetStreamHandlerRoundRobin(topic, numAgents)
 	handler.Lock.RLock()
@@ -139,6 +142,7 @@ func accumulateData(topic string, msg *entities.Message) {
 	dataQueuesMutex.Unlock()
 }
 
+// DrainQueue drains a queue and returns all messages
 func DrainQueue(topic string) []*entities.Message {
 	_, queueCount := GetQueueComponents(topic)
 	dataQueuesMutex.Lock()
@@ -158,11 +162,13 @@ func isNumber(s string) bool {
 	return err == nil
 }
 
+// IsQueue returns true if the topic is a queue topic
 func IsQueue(topic string) bool {
 	topicParts := strings.Split(topic, ".")
 	return isNumber(topicParts[len(topicParts)-1])
 }
 
+// GetQueueComponents returns the queue id and the number of elements in the queue
 func GetQueueComponents(topic string) (string, int) {
 	topicParts := strings.Split(topic, ".")
 	queueID := topicParts[len(topicParts)-2]

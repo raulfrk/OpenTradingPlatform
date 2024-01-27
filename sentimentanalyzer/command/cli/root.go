@@ -45,6 +45,7 @@ func NewCancelCommand() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			key, _ := cmd.Flags().GetString("key")
 			cancelFunc, ok := command.GetCancelFunc(key)
+			// TODO: Add key validation
 			if !ok {
 				cmd.PrintErr(types.NewError(fmt.Errorf("no command with cancel key %s", key)).Respond())
 				return
