@@ -2,11 +2,12 @@ package requests
 
 import (
 	"encoding/json"
-	"errors"
 	"strconv"
 	"strings"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type Account string
@@ -15,43 +16,57 @@ const (
 	AnyAccount     Account = "any"
 	DefaultAccount Account = "default"
 )
-const (
-	StreamDefaultSource     = "alpaca"
-	StreamDefaultAssetClass = "stock"
-	StreamDefaultAccount    = "default"
-)
 
 // Datastructure to represent a stream request
 type StreamRequest struct {
-	Source     types.Source          `json:"source"`
-	AssetClass types.AssetClass      `json:"assetClass"`
-	Symbols    []string              `json:"symbols"`
-	Operation  types.StreamRequestOp `json:"operation"`
-	DataTypes  []types.DataType      `json:"dataTypes"`
+	Source     types.Source          `json:"source" validate:"required,min=3,isValidDataSource"`
+	AssetClass types.AssetClass      `json:"assetClass" validate:"required,min=3,isValidAssetClass"`
+	Symbols    []string              `json:"symbols" validate:"required,isValidSymbols"`
+	Operation  types.StreamRequestOp `json:"operation" validate:"required,min=3,isValidOperation"`
+	DataTypes  []types.DataType      `json:"dataTypes" validate:"required,isValidMultiDataType"`
 	Account    Account               `json:"account"`
 }
 
+func (sr *StreamRequest) Validate() error {
+	v := validator.New()
+	v.RegisterValidation("isValidDataSource", IsValidDataSource)
+	v.RegisterValidation("isValidAssetClass", IsValidAssetClass)
+	v.RegisterValidation("isValidOperation", IsValidOperationStream)
+	v.RegisterValidation("isValidMultiDataType", IsValidMultiDataTypeStream)
+	v.RegisterValidation("isValidAccount", IsValidAccount)
+	v.RegisterValidation("isValidSymbols", IsValidMultiSymbolStream)
+
+	err := v.Struct(sr)
+	return SummarizeError(err)
+}
+
 type StreamSubscribeAgents struct {
-	AgentCount int    `json:"agentCount"`
-	Topic      string `json:"topic"`
+	AgentCount int    `json:"agentCount" validate:"required,min=1"`
+	Topic      string `json:"topic" validate:"required,min=3"`
+}
+
+func (ssa *StreamSubscribeAgents) Validate() error {
+	v := validator.New()
+	err := v.Struct(ssa)
+	return SummarizeError(err)
 }
 
 type StreamSubscribeRequest struct {
-	StreamSubscribeWithAgents []StreamSubscribeAgents `json:"streamSubscribeWithAgents"`
-	Operation                 types.StreamRequestOp   `json:"operation"`
+	StreamSubscribeWithAgents []StreamSubscribeAgents `json:"streamSubscribeWithAgents" validate:"-"`
+	Operation                 types.StreamRequestOp   `json:"operation" validate:"required,min=3,isValidOperation"`
 }
 
-func (sr StreamRequest) ApplyDefault() StreamRequest {
-	if sr.Source == "" {
-		sr.Source = StreamDefaultSource
+func (ssr *StreamSubscribeRequest) Validate() error {
+	for _, ssa := range ssr.StreamSubscribeWithAgents {
+		err := ssa.Validate()
+		if err != nil {
+			return err
+		}
 	}
-	if sr.AssetClass == "" {
-		sr.AssetClass = StreamDefaultAssetClass
-	}
-	if sr.Account == "" {
-		sr.Account = StreamDefaultAccount
-	}
-	return sr
+	v := validator.New()
+	v.RegisterValidation("isValidOperation", IsValidOperationStreamSubscribe)
+	err := v.Struct(ssr)
+	return SummarizeError(err)
 }
 
 func (sr *StreamRequest) JSON() []byte {
@@ -101,7 +116,21 @@ func NewStreamSubscribeRequestFromRaw(iTopicAgents []string,
 		StreamSubscribeWithAgents: streamSubscribeWithAgents,
 		Operation:                 operation,
 	}
-	return streamSubscribeRequest, nil
+	err := streamSubscribeRequest.Validate()
+	return streamSubscribeRequest, err
+}
+
+func NewStreamSubscribeRequestFromExisting(req *StreamSubscribeRequest) (StreamSubscribeRequest, error) {
+	agents := make([]string, len(req.StreamSubscribeWithAgents))
+	for i, ssa := range req.StreamSubscribeWithAgents {
+		if ssa.AgentCount == 0 {
+			agents[i] = ssa.Topic
+		} else {
+			agents[i] = ssa.Topic + "," + strconv.Itoa(ssa.AgentCount)
+		}
+	}
+	return NewStreamSubscribeRequestFromRaw(agents, req.Operation)
+
 }
 
 func NewStreamRequest(source types.Source,
@@ -121,66 +150,37 @@ func NewStreamRequest(source types.Source,
 	}
 }
 
-func NewStreamRequestFromRaw(iSource string,
-	iAssetClass string,
-	iSymbols []string,
-	iOperation string,
-	iDataTypes []string,
-	iAccount string) (StreamRequest, error) {
+func NewStreamRequestFromRaw(source string,
+	assetClass string,
+	symbols []string,
+	operation string,
+	dataTypes []string,
+	account string, defaultingFunc func(*StreamRequest)) (StreamRequest, error) {
 
-	source, exists := GetDataSourceMap()[iSource]
-
-	if !exists {
-		return StreamRequest{}, errors.New("Invalid data source: " + iSource)
+	var convertedDataTypes = make([]types.DataType, len(dataTypes))
+	for i, dataType := range dataTypes {
+		convertedDataTypes[i] = types.DataType(dataType)
 	}
-
-	assetClass, exists := types.GetAssetClassMap()[iAssetClass]
-
-	if !exists {
-		return StreamRequest{}, errors.New("Invalid asset class: " + iAssetClass)
-	}
-
-	operation, exists := types.GetStreamRequestOpMap()[iOperation]
-
-	if !exists {
-		return StreamRequest{}, errors.New("Invalid operation: " + iOperation)
-	}
-
-	dataTypes := make([]types.DataType, len(iDataTypes))
-
-	if len(iDataTypes) == 0 {
-		return StreamRequest{}, errors.New("no data types specified")
-	}
-
-	if len(iSymbols) == 0 {
-		return StreamRequest{}, errors.New("no symbols specified")
-	}
-
-	for i, dType := range iDataTypes {
-		dataTypeMap := GetDataTypeMap()[source]
-		dataType, exists := dataTypeMap(assetClass)[types.DataType(dType)]
-
-		if !exists {
-			return StreamRequest{}, errors.New("Invalid data type: " + dType)
-		}
-
-		dataTypes[i] = dataType
-	}
-
-	account, exists := GetAccount()[iAccount]
-
-	if !exists {
-		return StreamRequest{}, errors.New("Invalid account type: " + iAccount)
-	}
-
-	streamRequest := NewStreamRequest(source,
-		assetClass,
-		iSymbols,
-		operation,
-		dataTypes,
-		account,
+	streamRequest := NewStreamRequest(types.Source(source),
+		types.AssetClass(assetClass),
+		symbols,
+		types.StreamRequestOp(operation),
+		convertedDataTypes,
+		Account(account),
 	)
-	return streamRequest, nil
+	defaultingFunc(&streamRequest)
+	err := streamRequest.Validate()
+	return streamRequest, err
+}
+
+func NewStreamRequestFromExisting(req *StreamRequest, defaultingFunc func(*StreamRequest)) (StreamRequest, error) {
+	return NewStreamRequestFromRaw(string(req.Source),
+		string(req.AssetClass),
+		req.Symbols,
+		string(req.Operation),
+		req.GetStrDataTypes(),
+		string(req.Account),
+		defaultingFunc)
 }
 
 func (sr *StreamRequest) GetSource() types.Source {

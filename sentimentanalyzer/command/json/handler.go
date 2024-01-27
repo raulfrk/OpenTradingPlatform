@@ -58,12 +58,17 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 	if jsonCommand.RootOperation == command.JSONOperationData {
 		var dataRequest requests.SentimentAnalysisRequest
 		err := JSON.Unmarshal(jsonCommand.Request, &dataRequest)
-		dataRequest = dataRequest.ApplyDefault()
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
+		validatedRequest, err := requests.NewSentimentAnalysisRequestFromExisting(&dataRequest,
+			requests.DefaultForEmptySentimentAnalysisRequest)
+
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
 		var och chan types.DataResponse = make(chan types.DataResponse)
-		go handler.HandleAnalysisRequest(ctx, &dataRequest, och)
+		go handler.HandleAnalysisRequest(ctx, &validatedRequest, och)
 
 		select {
 		case response := <-och:

@@ -69,16 +69,17 @@ func worker(ctx context.Context,
 			resultsCh <- n
 			continue
 		}
-		logging.Log().Debug().Str("news", n.Headline).Msg("processing news")
+		logging.Log().Debug().Str("news", n.Fingerprint).Msg("processing news")
 
 		if n.Headline == "" {
 			logging.Log().Debug().Msg("news headline is empty")
 			continue
 		}
-		childCtx, _ := context.WithCancel(ctx)
+		childCtx, cancel := context.WithCancel(ctx)
 		analyzedSentiment, err := analysisF(childCtx, n, req)
 		if err != nil {
 			errCh <- err
+			cancel()
 			continue
 		}
 		if isValidJSON(analyzedSentiment) {
@@ -87,6 +88,7 @@ func worker(ctx context.Context,
 			logging.Log().Debug().Str("news", n.Headline).Str("sentiment", analyzedSentiment).Msg("received plain response from LLM")
 			handlePlainResponse(analyzedSentiment, n, req, resultsCh, errCh)
 		}
+		cancel()
 
 	}
 }
@@ -159,10 +161,6 @@ func handlePlainResponse(analyzedSentiment string, n *entities.News, req *reques
 	if err != nil {
 		err = fmt.Errorf("for news \"%s\"; %v", n.Headline, err)
 		logging.Log().Debug().Err(err).Msg("while extracting sentiment")
-		if !req.IgnoreFailedParsing {
-			errCh <- err
-			return
-		}
 		failed = true
 	}
 

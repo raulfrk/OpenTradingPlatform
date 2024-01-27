@@ -13,14 +13,8 @@ import (
 
 var log *zerolog.Logger
 
-var component types.Component
-
 func SetLogger(l *zerolog.Logger) {
 	log = l
-}
-
-func SetComponent(c types.Component) {
-	component = c
 }
 
 func Log() *zerolog.Logger {

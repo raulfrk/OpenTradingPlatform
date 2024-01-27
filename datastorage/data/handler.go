@@ -27,8 +27,8 @@ func HandleDataFetch[T any,
 			Msg("getting data from database")
 		return nil, types.NewDataError(err)
 	}
-	var responseTopic string = ""
-	var queueID string = ""
+	var responseTopic = ""
+	var queueID = ""
 
 	var messages []*entities.Message
 	for _, entity := range result {
@@ -51,7 +51,7 @@ func HandleDataFetch[T any,
 	}
 	return &messages, types.NewDataResponse(
 		types.Success,
-		"Successfully added data",
+		"Successfully retrieved data",
 		nil,
 		responseTopic,
 	)

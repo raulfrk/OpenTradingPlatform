@@ -12,8 +12,7 @@ const (
 	JSONOperationStream          JSONOperation = "stream"
 	JSONOperationStreamSubscribe JSONOperation = "stream-subscribe"
 
-	JSONOperationData                    JSONOperation = "data"
-	JSONOperationSentimentAnalysisFromDB JSONOperation = "sentiment-analysis-from-db"
+	JSONOperationData JSONOperation = "data"
 )
 
 type JSONCommand struct {

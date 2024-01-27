@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/proto"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func HashStruct(data interface{}) (string, error) {
