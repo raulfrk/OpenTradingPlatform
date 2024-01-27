@@ -56,7 +56,7 @@ func worker(ctx context.Context,
 
 		for _, s := range n.Sentiments {
 			matchesExisting := s.LLM == req.GetFormattedModelProvider() &&
-				s.Symbol == req.GetSymbols()[0] &&
+				s.Symbol == req.GetSymbol() &&
 				s.SentimentAnalysisProcess == string(req.SentimentAnalysisProcess) && s.SystemPrompt == req.SystemPrompt
 
 			failedShouldRetry = s.Failed && req.RetryFailed
@@ -176,7 +176,7 @@ func handlePlainResponse(analyzedSentiment string, n *entities.News, req *reques
 		SentimentAnalysisProcess: string(req.SentimentAnalysisProcess),
 		News:                     n,
 		LLM:                      req.GetFormattedModelProvider(),
-		Symbol:                   req.GetSymbols()[0],
+		Symbol:                   req.GetSymbol(),
 		SystemPrompt:             req.SystemPrompt,
 		Failed:                   failed,
 	}
@@ -249,7 +249,7 @@ func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalys
 			return news[i].UpdatedAt < news[j].UpdatedAt
 		})
 
-		responseTopic := utils.NewDataTopic(types.SentimentAnalyzer, types.Internal, types.News, types.NewsWithSentiment, req.GetSymbols()[0], news[len(news)-1].Fingerprint, len(news)).Generate()
+		responseTopic := utils.NewDataTopic(types.SentimentAnalyzer, types.Internal, types.News, types.NewsWithSentiment, req.GetSymbol(), news[len(news)-1].Fingerprint, len(news)).Generate()
 		handler, handlerResponse := producer.GetQueueHandler(responseTopic, req.NoConfirm)
 		if handlerResponse.Err != "" {
 			return handlerResponse

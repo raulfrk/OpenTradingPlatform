@@ -31,7 +31,7 @@ func (r SentimentAnalysisRequest) ApplyDefault() SentimentAnalysisRequest {
 	}
 
 	r.Operation = types.DataGetOp
-	r.DataTypes = []types.DataType{types.RawText}
+	r.DataType = types.RawText
 
 	if r.SentimentAnalysisProcess == "" {
 		r.SentimentAnalysisProcess = DefaultSentimentAnalysisProcess

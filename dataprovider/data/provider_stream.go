@@ -59,7 +59,7 @@ func AddDataProviderStreamForDType(req requests.StreamRequest, dataType types.Da
 		}
 	}()
 
-	for _, symbol := range req.GetSymbols() {
+	for _, symbol := range req.GetSymbol() {
 		res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&DataProviderStream{
 			DataSource: req.GetSource(),
 			Account:    req.GetAccount(),
@@ -106,7 +106,7 @@ func RemoveDataProviderStreamForDType(req requests.StreamRequest, dataType types
 		req.GetAccount(),
 		req.GetAssetClass(),
 		dataType,
-		req.GetSymbols()).
+		req.GetSymbol()).
 		Delete(&DataProviderStream{}).
 		Error; err != nil {
 		tx.Rollback()

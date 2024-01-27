@@ -35,9 +35,9 @@ type DataRequest struct {
 	Fingerprint string              `json:"fingerprint"`
 	Source      types.Source        `json:"source"`
 	AssetClass  types.AssetClass    `json:"assetClass"`
-	Symbols     []string            `json:"symbols"`
+	Symbol      string              `json:"symbol"`
 	Operation   types.DataRequestOp `json:"operation"`
-	DataTypes   []types.DataType    `json:"dataTypes"`
+	DataType    types.DataType      `json:"dataType"`
 	Account     Account             `json:"account"`
 	StartTime   int64               `json:"startTime"`
 	EndTime     int64               `json:"endTime"`
@@ -86,16 +86,16 @@ func (d *DataRequest) GetAssetClass() types.AssetClass {
 	return d.AssetClass
 }
 
-func (d *DataRequest) GetSymbols() []string {
-	return d.Symbols
+func (d *DataRequest) GetSymbol() string {
+	return d.Symbol
 }
 
 func (d *DataRequest) GetOperation() types.DataRequestOp {
 	return d.Operation
 }
 
-func (d *DataRequest) GetDataTypes() []types.DataType {
-	return d.DataTypes
+func (d *DataRequest) GetDataType() types.DataType {
+	return d.DataType
 }
 
 func (d *DataRequest) GetAccount() Account {
@@ -124,9 +124,9 @@ func (d *DataRequest) GetFingerprint() string {
 
 func NewDataRequest(source types.Source,
 	assetClass types.AssetClass,
-	symbols []string,
+	symbol string,
 	operation types.DataRequestOp,
-	dataTypes []types.DataType,
+	dataType types.DataType,
 	account Account,
 	startTime int64,
 	endTime int64,
@@ -136,9 +136,9 @@ func NewDataRequest(source types.Source,
 	return DataRequest{
 		Source:     source,
 		AssetClass: assetClass,
-		Symbols:    symbols,
+		Symbol:     symbol,
 		Operation:  operation,
-		DataTypes:  dataTypes,
+		DataType:   dataType,
 		Account:    account,
 		StartTime:  startTime,
 		EndTime:    endTime,
@@ -149,9 +149,9 @@ func NewDataRequest(source types.Source,
 
 func NewDataRequestFromRaw(iSource string,
 	iAssetClass string,
-	iSymbols []string,
+	iSymbols string,
 	iOperation string,
-	iDataTypes []string,
+	iDataTypes string,
 	iAccount string,
 	iStartTime int64,
 	iEndTime int64,
@@ -176,28 +176,19 @@ func NewDataRequestFromRaw(iSource string,
 		return DataRequest{}, errors.New("Invalid operation: " + iOperation)
 	}
 
-	dataTypes := make([]types.DataType, len(iDataTypes))
-
-	if len(iDataTypes) == 0 {
-		return DataRequest{}, errors.New("no data types specified")
-	}
-	if len(iSymbols) == 0 {
-		return DataRequest{}, errors.New("no symbols specified")
-	}
+	var dataType types.DataType
 
 	if assetClass == types.News {
-		dataTypes = []types.DataType{types.RawText}
+		dataType = types.RawText
 	} else {
-		for i, dType := range iDataTypes {
-			dataTypeMap := GetDataTypeMap()[source]
-			dataType, exists := dataTypeMap(assetClass)[types.DataType(dType)]
+		dataTypeMap := GetDataTypeMap()[source]
+		dtype, exists := dataTypeMap(assetClass)[types.DataType(dataType)]
 
-			if !exists {
-				return DataRequest{}, errors.New("Invalid data type: " + dType)
-			}
-
-			dataTypes[i] = dataType
+		if !exists {
+			return DataRequest{}, fmt.Errorf("invalid data type: %s", dtype)
 		}
+
+		dataType = dtype
 	}
 
 	account, exists := GetAccount()[iAccount]
@@ -216,7 +207,7 @@ func NewDataRequestFromRaw(iSource string,
 		assetClass,
 		iSymbols,
 		operation,
-		dataTypes,
+		dataType,
 		account,
 		iStartTime,
 		iEndTime,

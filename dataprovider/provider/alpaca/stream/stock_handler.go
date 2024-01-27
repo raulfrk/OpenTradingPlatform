@@ -101,7 +101,7 @@ func handleAlpacaStockStreamRequest(req requests.StreamRequest) types.StreamResp
 // Handle a stock stream add request for Alpaca
 func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 	clientLock *sync.RWMutex, req requests.StreamRequest) types.StreamResponse {
-	dtypes := req.GetDataTypes()
+	dtypes := req.GetDataType()
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("adding stocks stream")
 	for _, dtype := range dtypes {
 		var err error
@@ -124,7 +124,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 		case types.DailyBars:
 			err = client.SubscribeToDailyBars(func(b astream.Bar) {
 				msg, err := handleOnStreamData[astream.Bar,
@@ -138,7 +138,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 		case types.UpdatedBars:
 			err = client.SubscribeToUpdatedBars(func(b astream.Bar) {
 				msg, err := handleOnStreamData[astream.Bar,
@@ -152,7 +152,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 		case types.Trades:
 			err = client.SubscribeToTrades(func(t astream.Trade) {
 				msg, err := handleOnStreamData[astream.Trade,
@@ -166,7 +166,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 
 		case types.Quotes:
 			err = client.SubscribeToQuotes(func(q astream.Quote) {
@@ -181,7 +181,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 		case types.LULD:
 			err = client.SubscribeToLULDs(func(luld astream.LULD) {
 				msg, err := handleOnStreamData[astream.LULD,
@@ -195,7 +195,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 		case types.Status:
 			err = client.SubscribeToStatuses(func(s astream.TradingStatus) {
 				msg, err := handleOnStreamData[astream.TradingStatus,
@@ -209,7 +209,7 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 					return
 				}
 				producer.GetStreamHandler(msg.Topic).Ch <- msg
-			}, req.GetSymbols()...)
+			}, req.GetSymbol()...)
 		default:
 			err = fmt.Errorf("data type %s not supported yet", dtype)
 		}
@@ -237,9 +237,9 @@ func handleAlpacaStockStreamRemoveRequest(client *astream.StocksClient,
 	req requests.StreamRequest) types.StreamResponse {
 
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("removing crypto stream")
-	symbols := req.GetSymbols()
+	symbols := req.GetSymbol()
 
-	for _, dtype := range req.GetDataTypes() {
+	for _, dtype := range req.GetDataType() {
 		clientLock.Lock()
 		var err error
 		logging.Log().Debug().

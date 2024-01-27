@@ -122,7 +122,7 @@ func handleAlpacaStreamGetRequest(req requests.StreamRequest, assetClass types.A
 func HandleAlpacaStreamRequest(req requests.StreamRequest) types.StreamResponse {
 	var response types.StreamResponse
 	// Validate symbols
-	for _, symbol := range req.GetSymbols() {
+	for _, symbol := range req.GetSymbol() {
 		if !alpaca.IsSymbolValid(symbol, req.GetAssetClass()) {
 			return provider.NewStreamError(
 				fmt.Errorf("symbol %s not valid for asset class %s", symbol, req.GetAssetClass()),
