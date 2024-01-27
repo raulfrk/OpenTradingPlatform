@@ -66,13 +66,20 @@ func NewRootCmd() *cobra.Command {
 					panic(err)
 				}
 
-				JSON.Unmarshal(fileContent, &commands)
+				err = JSON.Unmarshal(fileContent, &commands)
+				if err != nil {
+					panic(err)
+				}
 				for _, cmd := range commands {
 					if cmd.RootOperation != command.JSONOperationStreamSubscribe {
 						panic(fmt.Errorf("startup config can only contain stream subscribe requests for now"))
 					}
 					var streamSubscribeRequest requests.StreamSubscribeRequest
 					err := JSON.Unmarshal(cmd.Request, &streamSubscribeRequest)
+					if err != nil {
+						panic(err)
+					}
+					streamSubscribeRequest, err = requests.NewStreamSubscribeRequestFromExisting(&streamSubscribeRequest)
 					if err != nil {
 						panic(err)
 					}

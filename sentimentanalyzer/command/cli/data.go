@@ -39,8 +39,6 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 			failFastOnBadSentiment, _ := cmd.Flags().GetBool("fail-fast-bad-sentiment")
 
-			ignoreFailedParsing, _ := cmd.Flags().GetBool("ignore-failed-parsing")
-
 			err := command.AddCancelFunc(cancelKey, cmd.Context().Value(command.CancelKey{}).(context.CancelFunc))
 			if err != nil {
 				logging.Log().Error().Err(err).Msg("Error adding cancel function")
@@ -58,11 +56,12 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 				symbol,
 				"get",
 				string(types.RawText),
-				string(requests.DataDefaultAccount),
+				"",
 				startTime,
 				endTime,
 				types.NoTimeFrame,
 				noConfirm,
+				requests.DefaultForEmptyDataRequest,
 			)
 			if err != nil {
 				logging.Log().Error().Err(err).Msg("Error creating data request")
@@ -72,10 +71,10 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 				dataReq,
 				sentimentAnalysisProcess,
 				model,
-				ignoreFailedParsing,
 				systemPrompt,
 				failFastOnBadSentiment,
 				retryFailed,
+				requests.DefaultForEmptySentimentAnalysisRequest,
 			)
 			och := make(chan types.DataResponse)
 			go handler.HandleAnalysisRequest(cmd.Context(), &req, och)
@@ -90,23 +89,21 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 
 		},
 	}
-	analyzeFromDBCmd.Flags().BoolP("ignore-failed-parsing", "g", false,
-		"Ignore errors that occur while parsing LLM answers (that news will be skipped)")
-	analyzeFromDBCmd.Flags().StringP("source", "s", requests.DataDefaultSource,
+	analyzeFromDBCmd.Flags().StringP("source", "s", "",
 		"Source of the news data")
-	analyzeFromDBCmd.Flags().StringP("symbol", "y", requests.DataDefaultSymbol,
+	analyzeFromDBCmd.Flags().StringP("symbol", "y", "",
 		"Symbols")
 	analyzeFromDBCmd.Flags().StringP("system-prompt", "t", "",
 		"System prompt for sentiment analysis")
 
 	analyzeFromDBCmd.Flags().StringP("model", "m", "", `LLM to use for sentiment analysis. Format: 
 	{provider}/{model} (e.g. ollama/llama2)`)
-	analyzeFromDBCmd.Flags().Int64P("start-time", "b", requests.DataDefaultStartTime,
+	analyzeFromDBCmd.Flags().Int64P("start-time", "b", 0,
 		"Start time for the data")
-	analyzeFromDBCmd.Flags().Int64P("end-time", "e", requests.DataDefaultEndTime,
+	analyzeFromDBCmd.Flags().Int64P("end-time", "e", 0,
 		"End time for the data")
-	analyzeFromDBCmd.Flags().StringP("process", "p", string(requests.DefaultSentimentAnalysisProcess), "Sentiment analysis process")
-	analyzeFromDBCmd.Flags().BoolP("no-confirm", "o", requests.DataDefaultNoConfirm,
+	analyzeFromDBCmd.Flags().StringP("process", "p", "", "Sentiment analysis process")
+	analyzeFromDBCmd.Flags().BoolP("no-confirm", "o", false,
 		"Setting this flag will make so that data is streamed as soon as ready")
 	analyzeFromDBCmd.Flags().BoolP("fail-fast-bad-sentiment", "f", false,
 		"Whether to fail fast when invalid sentiment is detected")
@@ -114,11 +111,6 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 		"Whether to retry sentiment analysis for news that failed previously")
 	analyzeFromDBCmd.Flags().StringP("with-cancel-key", "c", "",
 		"Set the cancellation key")
-
-	analyzeFromDBCmd.MarkFlagRequired("model")
-	analyzeFromDBCmd.MarkFlagRequired("symbol")
-	analyzeFromDBCmd.MarkFlagRequired("system-prompt")
-	analyzeFromDBCmd.MarkFlagRequired("with-cancel-key")
 
 	return &analyzeFromDBCmd
 }

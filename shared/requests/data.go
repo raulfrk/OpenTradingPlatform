@@ -3,7 +3,6 @@ package requests
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 	"tradingplatform/shared/communication/command"
@@ -14,35 +13,37 @@ import (
 
 	"tradingplatform/shared/types"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
 )
 
-const (
-	DataDefaultSource               = "alpaca"
-	DataDefaultSymbol               = ""
-	DataDefaultAssetClass           = "stock"
-	DataDefaultDataType             = ""
-	DataDefaultAccount              = "default"
-	DataDefaultStartTime            = 0
-	DataDefaultEndTime              = 0
-	DataDefaultTimeFrame            = "1min"
-	DataDefaultNoConfirm            = false
-	DefaultSentimentAnalysisProcess = types.Plain
-)
-
 type DataRequest struct {
 	Fingerprint string              `json:"fingerprint"`
-	Source      types.Source        `json:"source"`
-	AssetClass  types.AssetClass    `json:"assetClass"`
-	Symbol      string              `json:"symbol"`
-	Operation   types.DataRequestOp `json:"operation"`
-	DataType    types.DataType      `json:"dataType"`
-	Account     Account             `json:"account"`
-	StartTime   int64               `json:"startTime"`
-	EndTime     int64               `json:"endTime"`
-	TimeFrame   types.TimeFrame     `json:"timeFrame"`
+	Source      types.Source        `json:"source" validate:"required,min=3,isValidDataSource"`
+	AssetClass  types.AssetClass    `json:"assetClass" validate:"required,min=3,isValidAssetClass"`
+	Symbol      string              `json:"symbol" validate:"required,min=1"`
+	Operation   types.DataRequestOp `json:"operation" validate:"required,min=3,isValidOperation"`
+	DataType    types.DataType      `json:"dataType" validate:"required,min=3,isValidDataType"`
+	Account     Account             `json:"account" validate:"required,min=3,isValidAccount"`
+	StartTime   int64               `json:"startTime" validate:"required,min=0"`
+	EndTime     int64               `json:"endTime" validate:"required,min=0,isValidEndTime"`
+	TimeFrame   types.TimeFrame     `json:"timeFrame" validate:"required,min=3,isValidDataFrame"`
 	NoConfirm   bool                `json:"noConfirm"`
+}
+
+func (d *DataRequest) Validate() error {
+	v := validator.New()
+	v.RegisterValidation("isValidDataSource", IsValidDataSource)
+	v.RegisterValidation("isValidAssetClass", IsValidAssetClass)
+	v.RegisterValidation("isValidOperation", IsValidOperation)
+	v.RegisterValidation("isValidDataType", IsValidDataType)
+	v.RegisterValidation("isValidAccount", IsValidAccount)
+	v.RegisterValidation("isValidDataFrame", IsValidDataFrame)
+	v.RegisterValidation("isValidEndTime", IsValidEndTime)
+
+	err := v.Struct(d)
+	return SummarizeError(err)
 }
 
 func (r *DataRequest) JSON() []byte {
@@ -54,28 +55,6 @@ func (r *DataRequest) JSON() []byte {
 		return []byte{}
 	}
 	return js
-}
-
-func (r DataRequest) ApplyDefault() DataRequest {
-	if r.Source == "" {
-		r.Source = DataDefaultSource
-	}
-	if r.AssetClass == "" {
-		r.AssetClass = DataDefaultAssetClass
-	}
-	if r.Account == "" {
-		r.Account = DataDefaultAccount
-	}
-	if r.StartTime == 0 {
-		r.StartTime = DataDefaultStartTime
-	}
-	if r.EndTime == 0 {
-		r.EndTime = DataDefaultEndTime
-	}
-	if r.TimeFrame == "" {
-		r.TimeFrame = DataDefaultTimeFrame
-	}
-	return r
 }
 
 func (d *DataRequest) GetSource() types.Source {
@@ -147,74 +126,45 @@ func NewDataRequest(source types.Source,
 	}
 }
 
-func NewDataRequestFromRaw(iSource string,
-	iAssetClass string,
-	iSymbols string,
-	iOperation string,
-	iDataTypes string,
-	iAccount string,
-	iStartTime int64,
-	iEndTime int64,
-	iTimeFrame string,
-	iNoConfirm bool) (DataRequest, error) {
+func NewDataRequestFromRaw(source string,
+	assetClass string,
+	symbol string,
+	operation string,
+	dataType string,
+	account string,
+	startTime int64,
+	endTime int64,
+	timeFrame string,
+	noConfirm bool, defaultingFunc func(*DataRequest)) (DataRequest, error) {
 
-	source, exists := GetDataSourceMap()[iSource]
-
-	if !exists {
-		return DataRequest{}, errors.New("Invalid data source: " + iSource)
-	}
-
-	assetClass, exists := types.GetAssetClassMap()[iAssetClass]
-
-	if !exists {
-		return DataRequest{}, errors.New("Invalid asset type: " + iAssetClass)
-	}
-
-	operation, exists := types.GetDataRequestOpMap()[iOperation]
-
-	if !exists {
-		return DataRequest{}, errors.New("Invalid operation: " + iOperation)
-	}
-
-	var dataType types.DataType
-
-	if assetClass == types.News {
-		dataType = types.RawText
-	} else {
-		dataTypeMap := GetDataTypeMap()[source]
-		dtype, exists := dataTypeMap(assetClass)[types.DataType(dataType)]
-
-		if !exists {
-			return DataRequest{}, fmt.Errorf("invalid data type: %s", dtype)
-		}
-
-		dataType = dtype
-	}
-
-	account, exists := GetAccount()[iAccount]
-
-	if !exists {
-		return DataRequest{}, errors.New("Invalid account type: " + iAccount)
-	}
-
-	timeFrame, exists := types.GetTimeFrameMap()[iTimeFrame]
-
-	if !exists {
-		return DataRequest{}, errors.New("Invalid time frame: " + iTimeFrame)
-	}
-
-	dataRequest := NewDataRequest(source,
-		assetClass,
-		iSymbols,
-		operation,
-		dataType,
-		account,
-		iStartTime,
-		iEndTime,
-		timeFrame,
-		iNoConfirm,
+	dataRequest := NewDataRequest(types.Source(source),
+		types.AssetClass(assetClass),
+		symbol,
+		types.DataRequestOp(operation),
+		types.DataType(dataType),
+		Account(account),
+		startTime,
+		endTime,
+		types.TimeFrame(timeFrame),
+		noConfirm,
 	)
-	return dataRequest, nil
+
+	defaultingFunc(&dataRequest)
+	err := dataRequest.Validate()
+	return dataRequest, err
+}
+
+func NewDataRequestFromExisting(dataRequest *DataRequest, defaultingFunc func(*DataRequest)) (DataRequest, error) {
+	return NewDataRequestFromRaw(string(dataRequest.Source),
+		string(types.AssetClass(dataRequest.AssetClass)),
+		dataRequest.Symbol,
+		string(dataRequest.Operation),
+		string(dataRequest.DataType),
+		string(dataRequest.Account),
+		dataRequest.StartTime,
+		dataRequest.EndTime,
+		string(dataRequest.TimeFrame),
+		dataRequest.NoConfirm, defaultingFunc)
 }
 
 func RequestData(ctx context.Context, topic utils.Topic, dataRequest DataRequest, onData func(*entities.Message)) error {

@@ -19,6 +19,10 @@
                 {
                     "topic": "dataprovider.*.alpaca.*.*.>",
                     "agentCount": 50
+                },
+                {
+                    "topic": "sentiment-analyzer.data.>",
+                    "agentCount": 5
                 }
             ]
         }

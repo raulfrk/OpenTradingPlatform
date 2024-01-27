@@ -5,7 +5,7 @@ import (
 	"tradingplatform/shared/logging"
 
 	"google.golang.org/protobuf/proto"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func HandleEntityQueue[T protoreflect.ProtoMessage](msg []*entities.Message, sample T, f func([]T)) {

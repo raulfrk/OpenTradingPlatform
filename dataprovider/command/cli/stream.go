@@ -6,7 +6,6 @@ import (
 
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/requests"
-	"tradingplatform/shared/types"
 
 	"github.com/spf13/cobra"
 )
@@ -41,19 +40,13 @@ func NewStreamAddCmd() *cobra.Command {
 			dataTypes, _ := cmd.Flags().GetStringArray("data-types")
 			account, _ := cmd.Flags().GetString("account")
 
-			if len(dataTypes) == 0 {
-				providerDatatypes := requests.GetDataTypeMap()[types.Source(source)]
-				for _, dtype := range providerDatatypes(types.AssetClass(assetClass)) {
-					dataTypes = append(dataTypes, string(dtype))
-				}
-			}
 			// Generate stream request from flags
 			streamRequest, err := requests.NewStreamRequestFromRaw(source,
 				assetClass,
 				symbols,
 				operation,
 				dataTypes,
-				account)
+				account, requests.DefaultForEmptyStreamAddDeleteRequest)
 
 			logging.Log().Info().
 				RawJSON("streamRequest", streamRequest.JSON()).
@@ -69,19 +62,16 @@ func NewStreamAddCmd() *cobra.Command {
 		},
 	}
 
-	streamAddCmd.Flags().StringP("source", "s", requests.StreamDefaultSource,
+	streamAddCmd.Flags().StringP("source", "s", "",
 		"Source of the data stream")
 	streamAddCmd.Flags().StringArrayP("symbols", "y", []string{},
 		"Symbols")
-	streamAddCmd.Flags().StringP("asset-class", "a", requests.StreamDefaultAssetClass,
+	streamAddCmd.Flags().StringP("asset-class", "a", "",
 		"Asset class")
 	streamAddCmd.Flags().StringArrayP("data-types", "t", []string{},
 		"Type of data (e.g. bar, trade...)")
-	streamAddCmd.Flags().StringP("account", "c", requests.StreamDefaultAccount,
+	streamAddCmd.Flags().StringP("account", "c", "",
 		"Account to use for the stream")
-
-	streamAddCmd.MarkFlagRequired("symbols")
-	streamAddCmd.MarkFlagRequired("asset-class")
 
 	return &streamAddCmd
 }
@@ -100,7 +90,12 @@ func NewStreamGetCmd() *cobra.Command {
 			account, _ := cmd.Flags().GetString("account")
 
 			// Generate stream request from flags
-			streamRequest, err := requests.NewStreamRequestFromRaw(source, assetClass, []string{}, operation, []string{}, account)
+			streamRequest, err := requests.NewStreamRequestFromRaw(source,
+				assetClass,
+				[]string{},
+				operation,
+				[]string{},
+				account, requests.DefaultForEmptyStreamRequest)
 
 			if err != nil {
 				cmd.Print(provider.NewStreamError(err).Respond())
@@ -110,14 +105,13 @@ func NewStreamGetCmd() *cobra.Command {
 			cmd.Print(response)
 		},
 	}
-	streamGetCmd.Flags().StringP("source", "s", requests.StreamDefaultSource,
+	streamGetCmd.Flags().StringP("source", "s", "",
 		"Source of the data stream")
-	streamGetCmd.Flags().StringP("asset-class", "a", requests.StreamDefaultAssetClass,
+	streamGetCmd.Flags().StringP("asset-class", "a", "",
 		"Asset class")
-	streamGetCmd.Flags().StringP("account", "c", requests.StreamDefaultAccount,
+	streamGetCmd.Flags().StringP("account", "c", "",
 		"Account")
 
-	streamGetCmd.MarkFlagRequired("asset-class")
 	return &streamGetCmd
 }
 
@@ -135,15 +129,9 @@ func NewStreamDeleteCmd() *cobra.Command {
 			dataTypes, _ := cmd.Flags().GetStringArray("data-types")
 			account, _ := cmd.Flags().GetString("account")
 
-			if len(dataTypes) == 0 {
-				providerDatatypes := requests.GetDataTypeMap()[types.Source(source)]
-				for _, dtype := range providerDatatypes(types.AssetClass(assetClass)) {
-					dataTypes = append(dataTypes, string(dtype))
-				}
-			}
 			// Generate stream request from flags
 			streamRequest, err := requests.NewStreamRequestFromRaw(source,
-				assetClass, symbols, operation, dataTypes, account)
+				assetClass, symbols, operation, dataTypes, account, requests.DefaultForEmptyStreamAddDeleteRequest)
 
 			if err != nil {
 				cmd.Print(provider.NewStreamError(err).Respond())
@@ -156,19 +144,16 @@ func NewStreamDeleteCmd() *cobra.Command {
 		},
 	}
 
-	streamAddCmd.Flags().StringP("source", "s", requests.StreamDefaultSource,
+	streamAddCmd.Flags().StringP("source", "s", "",
 		"Source of the data stream")
 	streamAddCmd.Flags().StringArrayP("symbols", "y", []string{},
 		"Symbols")
-	streamAddCmd.Flags().StringP("asset-class", "a", requests.StreamDefaultAssetClass,
+	streamAddCmd.Flags().StringP("asset-class", "a", "",
 		"Asset class")
 	streamAddCmd.Flags().StringArrayP("data-types", "t", []string{},
 		"Type of data (e.g. bar, trade...)")
-	streamAddCmd.Flags().StringP("account", "c", requests.StreamDefaultAccount,
+	streamAddCmd.Flags().StringP("account", "c", "",
 		"Account")
-
-	streamAddCmd.MarkFlagRequired("symbols")
-	streamAddCmd.MarkFlagRequired("asset-class")
 
 	return &streamAddCmd
 }

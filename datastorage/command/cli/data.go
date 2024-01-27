@@ -50,7 +50,8 @@ func NewDataGetCmd() *cobra.Command {
 				startTime,
 				endTime,
 				timeFrame,
-				noConfirm)
+				noConfirm,
+				requests.DefaultForEmptyDataRequest)
 
 			if err != nil {
 				cmd.Print(types.NewDataError(err).Respond())
@@ -69,29 +70,24 @@ func NewDataGetCmd() *cobra.Command {
 		},
 	}
 
-	dataGetCmd.Flags().StringP("source", "s", requests.DataDefaultSource,
+	dataGetCmd.Flags().StringP("source", "s", "",
 		"Source of the data stream")
-	dataGetCmd.Flags().StringP("symbol", "y", requests.DataDefaultSymbol,
+	dataGetCmd.Flags().StringP("symbol", "y", "",
 		"Symbols")
-	dataGetCmd.Flags().StringP("asset-class", "a", requests.DataDefaultAssetClass,
+	dataGetCmd.Flags().StringP("asset-class", "a", "",
 		"Asset class")
-	dataGetCmd.Flags().StringP("data-type", "t", requests.DataDefaultDataType,
+	dataGetCmd.Flags().StringP("data-type", "t", "",
 		"Type of data")
-	dataGetCmd.Flags().StringP("account", "c", requests.DataDefaultAccount,
+	dataGetCmd.Flags().StringP("account", "c", "",
 		"Account (not doing anything currently)")
-	dataGetCmd.Flags().Int64P("start-time", "b", requests.DataDefaultStartTime,
+	dataGetCmd.Flags().Int64P("start-time", "b", 0,
 		"Start time for the data")
-	dataGetCmd.Flags().Int64P("end-time", "e", requests.DataDefaultEndTime,
+	dataGetCmd.Flags().Int64P("end-time", "e", 0,
 		"End time for the data")
-	dataGetCmd.Flags().StringP("time-frame", "f", requests.DataDefaultTimeFrame,
+	dataGetCmd.Flags().StringP("time-frame", "f", "",
 		"Time frame (only for bar data)")
-	dataGetCmd.Flags().BoolP("no-confirm", "o", requests.DataDefaultNoConfirm,
+	dataGetCmd.Flags().BoolP("no-confirm", "o", false,
 		"Setting this flag will make so that data is streamed as soon as ready")
-
-	dataGetCmd.MarkFlagRequired("asset-class")
-	dataGetCmd.MarkFlagRequired("symbol")
-	dataGetCmd.MarkFlagRequired("start-time")
-	dataGetCmd.MarkFlagRequired("end-time")
 
 	return &dataGetCmd
 }

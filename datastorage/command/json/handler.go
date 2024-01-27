@@ -39,7 +39,11 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
-		return handler.HandleStreamRequest(streamSubscribeRequest).Respond()
+		validatedStreamSubscribeRequest, err := requests.NewStreamSubscribeRequestFromExisting(&streamSubscribeRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
+		return handler.HandleStreamRequest(validatedStreamSubscribeRequest).Respond()
 	}
 
 	if jsonCommand.RootOperation == command.JSONOperationData {
@@ -48,8 +52,12 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
+		validatedDataRequest, err := requests.NewDataRequestFromExisting(&dataRequest, requests.DefaultForEmptyDataRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
 		var och chan types.DataResponse = make(chan types.DataResponse)
-		go handler.HandleDataRequest(dataRequest.ApplyDefault(), och)
+		go handler.HandleDataRequest(validatedDataRequest, och)
 
 		select {
 		case response := <-och:

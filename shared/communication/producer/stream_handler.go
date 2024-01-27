@@ -16,18 +16,18 @@ var streamsMutex sync.RWMutex
 
 func GetStreamHandler(topic string) *utils.Handler[sharedent.Message] {
 	splitTopic := strings.Split(topic, ".")
-	formatted_topic := strings.Join(splitTopic[:len(splitTopic)-1], ".")
+	formattedTopic := strings.Join(splitTopic[:len(splitTopic)-1], ".")
 
 	streamsMutex.RLock()
-	handler, ok := streams[formatted_topic]
+	handler, ok := streams[formattedTopic]
 	streamsMutex.RUnlock()
 
 	if !ok {
 		newTopicHandler := utils.NewHandler[sharedent.Message]()
 		streamsMutex.Lock()
-		streams[formatted_topic] = newTopicHandler
+		streams[formattedTopic] = newTopicHandler
 		streamsMutex.Unlock()
-		logging.Log().Debug().Str("topic", formatted_topic).Msg("starting new stream handler")
+		logging.Log().Debug().Str("topic", formattedTopic).Msg("starting new stream handler")
 		StartTopicHandler(newTopicHandler)
 		handler = newTopicHandler
 	}

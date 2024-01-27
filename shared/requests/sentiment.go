@@ -6,37 +6,28 @@ import (
 	"strings"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type SentimentAnalysisRequest struct {
-	DataRequest
-	SentimentAnalysisProcess types.SentimentAnalysisProcess `json:"sentimentAnalysisProcess"`
-	Model                    string                         `json:"model"`
-	ModelProvider            types.LLMProvider              `json:"modelProvider"`
-	IgnoreFailedParsing      bool                           `json:"ignoreFailedParsing"`
-	SystemPrompt             string                         `json:"systemPrompt"`
+	DataRequest              `validate:"-"`
+	SentimentAnalysisProcess types.SentimentAnalysisProcess `json:"sentimentAnalysisProcess" validate:"required,min=3,isValidSentimentAnalysisProcess"`
+	Model                    string                         `json:"model" validate:"required,min=3"`
+	ModelProvider            types.LLMProvider              `json:"modelProvider" validate:"required,min=3,isValidModelProvider"`
+	SystemPrompt             string                         `json:"systemPrompt" validate:"required,min=3"`
 	FailFastOnBadSentiment   bool                           `json:"failFastOnBadSentiment"`
 	RetryFailed              bool                           `json:"retryFailed"`
 }
 
-func (r SentimentAnalysisRequest) ApplyDefault() SentimentAnalysisRequest {
-	if r.Source == "" {
-		r.Source = DataDefaultSource
-	}
+func (sar *SentimentAnalysisRequest) Validate() error {
+	v := validator.New()
+	v.RegisterValidation("isValidSentimentAnalysisProcess", IsValidSentimentAnalysisProcess)
+	v.RegisterValidation("isValidModelProvider", IsValidModelProvider)
 
-	r.AssetClass = types.News
+	err := v.Struct(sar)
+	return SummarizeError(err)
 
-	if r.Account == "" {
-		r.Account = DataDefaultAccount
-	}
-
-	r.Operation = types.DataGetOp
-	r.DataType = types.RawText
-
-	if r.SentimentAnalysisProcess == "" {
-		r.SentimentAnalysisProcess = DefaultSentimentAnalysisProcess
-	}
-	return r
 }
 
 func (r *SentimentAnalysisRequest) JSON() []byte {
@@ -75,44 +66,50 @@ func (req *SentimentAnalysisRequest) GetSystemPrompt() (string, error) {
 
 func NewSentimentAnalysisRequestFromRaw(
 	dataRequest DataRequest,
-	iSentimentAnalysisProcess string,
-	iModel string,
-	iIgnoreFailedParsing bool,
-	iSystemPrompt string,
-	iFailFastOnBadSentiment bool,
-	iRetryFailed bool,
+	sentimentAnalysisProcess string,
+	model string,
+	systemPrompt string,
+	failFastOnBadSentiment bool,
+	retryFailed bool,
+	defaultingFunc func(*SentimentAnalysisRequest),
 ) (SentimentAnalysisRequest, error) {
-	// Validate sentiment analysis process
-	sentProcess, exists := types.GetSentimentAnalysisProcessMap()[iSentimentAnalysisProcess]
-	if !exists {
-		return SentimentAnalysisRequest{}, fmt.Errorf("sentiment analysis process %s is not currently supproted", iSentimentAnalysisProcess)
-	}
+
 	// Validate model
-	provider, model, err := extractProviderModel(iModel)
+	providerV, modelV, err := extractProviderModel(model)
 	if err != nil {
 		return SentimentAnalysisRequest{}, err
 	}
 
-	verifiedProvider, exists := GetModelProviderMap()[provider]
-	if !exists {
-		return SentimentAnalysisRequest{},
-			fmt.Errorf("provider %s is not currently supported", provider)
-	}
-
-	if iSystemPrompt == "" {
-		return SentimentAnalysisRequest{}, fmt.Errorf("system prompt cannot be empty")
-	}
-
-	return SentimentAnalysisRequest{
+	req := SentimentAnalysisRequest{
 		DataRequest:              dataRequest,
-		SentimentAnalysisProcess: sentProcess,
-		ModelProvider:            verifiedProvider,
-		Model:                    model,
-		IgnoreFailedParsing:      iIgnoreFailedParsing,
-		SystemPrompt:             iSystemPrompt,
-		FailFastOnBadSentiment:   iFailFastOnBadSentiment,
-		RetryFailed:              iRetryFailed,
-	}, nil
+		SentimentAnalysisProcess: types.SentimentAnalysisProcess(sentimentAnalysisProcess),
+		ModelProvider:            types.LLMProvider(providerV),
+		Model:                    modelV,
+		SystemPrompt:             systemPrompt,
+		FailFastOnBadSentiment:   failFastOnBadSentiment,
+		RetryFailed:              retryFailed,
+	}
+
+	defaultingFunc(&req)
+	_, err = NewDataRequestFromExisting(&req.DataRequest, DefaultForEmptyDataRequest)
+	if err != nil {
+		return SentimentAnalysisRequest{}, err
+	}
+	err = req.Validate()
+	return req, err
+
+}
+
+func NewSentimentAnalysisRequestFromExisting(req *SentimentAnalysisRequest, defaultingFunc func(*SentimentAnalysisRequest)) (SentimentAnalysisRequest, error) {
+
+	return NewSentimentAnalysisRequestFromRaw(req.DataRequest,
+		string(req.SentimentAnalysisProcess),
+		req.GetFormattedModelProvider(),
+		req.SystemPrompt,
+		req.FailFastOnBadSentiment,
+		req.RetryFailed,
+		defaultingFunc,
+	)
 }
 
 func GetModelProviderMap() map[string]types.LLMProvider {

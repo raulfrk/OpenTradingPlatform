@@ -16,7 +16,7 @@ import (
 
 var commandHandler *utils.Handler[string]
 
-var cancelKeys map[string]context.CancelFunc = make(map[string]context.CancelFunc)
+var cancelKeys = make(map[string]context.CancelFunc)
 var cancelKeyMutex sync.RWMutex
 
 func GetCancelFunc(key string) (context.CancelFunc, bool) {

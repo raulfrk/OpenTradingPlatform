@@ -34,8 +34,8 @@ func handleDataFetch[T any,
 			Msg("getting data from alpaca")
 		return nil, types.NewDataError(err)
 	}
-	var responseTopic string = ""
-	var queueID string = ""
+	var responseTopic = ""
+	var queueID = ""
 
 	var messages []*sharedent.Message
 	for _, element := range result {

@@ -4,21 +4,21 @@ import (
 	"context"
 	JSON "encoding/json"
 	"tradingplatform/dataprovider/handler"
-	"tradingplatform/shared/communication/command"
+	shcommand "tradingplatform/shared/communication/command"
 	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
 )
 
 // Handle a JSON command
 func HandleJSONCommand(ctx context.Context, jsonStr string) string {
-	var jsonCommand command.JSONCommand
+	var jsonCommand shcommand.JSONCommand
 	err := JSON.Unmarshal([]byte(jsonStr), &jsonCommand)
 	if err != nil {
 		return types.NewError(err).Respond()
 	}
 
-	if jsonCommand.RootOperation == command.JSONOperationQuit {
-		command.GetCommandHandler().Cancel()
+	if jsonCommand.RootOperation == shcommand.JSONOperationQuit {
+		shcommand.GetCommandHandler().Cancel()
 		return types.NewResponse(
 			types.Success,
 			"Gracefully shutting down DataProvider",
@@ -26,28 +26,36 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		).Respond()
 	}
 
-	if jsonCommand.RootOperation == command.JSONOperationStream {
+	if jsonCommand.RootOperation == shcommand.JSONOperationStream {
 		var streamRequest requests.StreamRequest
 		err := JSON.Unmarshal(jsonCommand.Request, &streamRequest)
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
-		return handler.HandleStreamRequest(streamRequest.ApplyDefault())
+		validatedStreamRequest, err := requests.NewStreamRequestFromExisting(&streamRequest, requests.DefaultForEmptyStreamRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
+		return handler.HandleStreamRequest(validatedStreamRequest)
 	}
 
-	if jsonCommand.RootOperation == command.JSONOperationData {
+	if jsonCommand.RootOperation == shcommand.JSONOperationData {
 		var dataRequest requests.DataRequest
 		err := JSON.Unmarshal(jsonCommand.Request, &dataRequest)
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
+		validDataRequest, err := requests.NewDataRequestFromExisting(&dataRequest, requests.DefaultForEmptyDataRequest)
+		if err != nil {
+			return types.NewError(err).Respond()
+		}
 		var och chan types.DataResponse = make(chan types.DataResponse)
-		go handler.HandleDataRequest(dataRequest.ApplyDefault(), och)
+		go handler.HandleDataRequest(validDataRequest, och)
 
 		select {
 		case response := <-och:
 			return response.Respond()
-		case <-command.GetCommandHandler().Ctx().Done():
+		case <-shcommand.GetCommandHandler().Ctx().Done():
 			return ""
 		}
 	}
