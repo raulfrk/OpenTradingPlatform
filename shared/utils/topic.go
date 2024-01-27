@@ -88,3 +88,10 @@ func NewCommandTopic(component types.Component) Topic {
 		Functionality: types.Command,
 	}
 }
+
+func NewLoggingTopic(component types.Component) Topic {
+	return Topic{
+		Component:     component,
+		Functionality: types.Logging,
+	}
+}

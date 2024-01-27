@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"tradingplatform/shared/logging"
+
 	"tradingplatform/shared/types"
 )
 
@@ -159,6 +160,13 @@ func NewDataRequestFromRaw(iSource string,
 	}
 
 	dataTypes := make([]types.DataType, len(iDataTypes))
+
+	if len(iDataTypes) == 0 {
+		return DataRequest{}, errors.New("no data types specified")
+	}
+	if len(iSymbols) == 0 {
+		return DataRequest{}, errors.New("no symbols specified")
+	}
 
 	if assetClass == types.News {
 		dataTypes = []types.DataType{types.RawText}

@@ -10,6 +10,7 @@ import (
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
+	"tradingplatform/shared/utils"
 
 	"github.com/nats-io/nats.go"
 )
@@ -20,7 +21,9 @@ func main() {
 		panic(err)
 	}
 	defer nc.Close()
-	mlLogger := logging.NewMultiLevelLogger(os.Stdout, logging.NewNatsWriter(nc, "dataprovider.logging"))
+	loggingTopic := utils.NewLoggingTopic(types.DataProvider).Generate()
+	mlLogger := logging.NewMultiLevelLogger(types.DataProvider,
+		os.Stdout, logging.NewNatsWriter(nc, loggingTopic))
 	logging.SetLogger(&mlLogger)
 
 	// Create a channel to receive OS signals
@@ -29,7 +32,7 @@ func main() {
 	// Register the channel to receive SIGINT and SIGTERM signals
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	_, cleanup := data.InitializeDatabase()
+	cleanup := data.InitializeDataProviderLocalDatabase()
 	defer cleanup()
 	command.StartCommandHandler(types.DataProvider, cli.NewRootCmd, json.HandleJSONCommand)
 	handler := command.GetCommandHandler()

@@ -15,5 +15,6 @@ message TradingStatus {
     string Tape = 7;
     string Fingerprint = 8;
     string Source = 9;
+    string AssetClass = 10;
 }
 
