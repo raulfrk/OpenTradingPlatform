@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/utils"
@@ -74,7 +75,7 @@ func StopTopicHandler(topic string) {
 }
 
 func handleTopic(handler *utils.Handler[entities.Message], topic string) {
-	nc, _ := nats.Connect(nats.DefaultURL)
+	nc, _ := nats.Connect(communication.GetNatsURL())
 	defer nc.Close()
 	sub, _ := nc.QueueSubscribe(topic, "storage", func(m *nats.Msg) {
 		go func() {

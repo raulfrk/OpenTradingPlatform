@@ -3,6 +3,7 @@ package ollama
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"tradingplatform/shared/entities"
 	"tradingplatform/shared/requests"
@@ -11,6 +12,15 @@ import (
 	"github.com/tmc/langchaingo/llms/ollama"
 )
 
+func GetOllamaServerURL() string {
+	url := os.Getenv("OLLAMA_SERVER_URL")
+	if url == "" {
+		return "http://localhost:11434"
+	}
+	return url
+}
+
+// TODO: Extract general functionality from here and leave only ollama specific things
 // HandleAnalysisNews handles the semtiment analysis of news using the ollama tool
 func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.SentimentAnalysisRequest) (string, error) {
 	var systemPrompt string
@@ -35,7 +45,7 @@ func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.
 }
 
 func handleAnalysis(ctx context.Context, systemPrompt string, news string, model string) (string, error) {
-	llm, err := ollama.New(ollama.WithModel(model), ollama.WithSystemPrompt(systemPrompt))
+	llm, err := ollama.New(ollama.WithModel(model), ollama.WithSystemPrompt(systemPrompt), ollama.WithServerURL(GetOllamaServerURL()))
 	if err != nil {
 		return "", fmt.Errorf("while creating ollama implementation: %v", err)
 	}

@@ -13,6 +13,7 @@ import (
 	"tradingplatform/datastorage/data"
 	"tradingplatform/datastorage/handler"
 
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/requests"
@@ -29,9 +30,11 @@ func NewRootCmd() *cobra.Command {
 		Short: "DataStorage for the data pipeline",
 		Run: func(cmd *cobra.Command, args []string) {
 			dns, _ := cmd.Flags().GetString("dsn")
+			natsURL, _ := cmd.Flags().GetString("nats-url")
 			startupConfig, _ := cmd.Flags().GetString("startup-commands")
 			data.SetDSN(dns)
-			nc, err := nats.Connect(nats.DefaultURL)
+			communication.SetNatsURL(natsURL)
+			nc, err := nats.Connect(communication.GetNatsURL())
 			if err != nil {
 				panic(err)
 			}
@@ -40,6 +43,10 @@ func NewRootCmd() *cobra.Command {
 			mlLogger := logging.NewMultiLevelLogger(types.DataStorage,
 				os.Stdout, logging.NewNatsWriter(nc, loggingTopic))
 			logging.SetLogger(&mlLogger)
+
+			logging.Log().Info().
+				Str("natsUrl", communication.GetNatsURL()).
+				Msg("starting datastorage, remote logging enabled")
 
 			// Create a channel to receive OS signals
 			sigs := make(chan os.Signal, 1)
@@ -96,6 +103,8 @@ func NewRootCmd() *cobra.Command {
 		},
 	}
 	rootCmd.Flags().StringP("dsn", "d", "postgres://postgres:otc@localhost:5432/otc", "DSN for the database")
+	rootCmd.Flags().StringP("nats-url", "n", communication.GetNatsURL(), "NATS server URL")
+
 	rootCmd.Flags().StringP("startup-commands", "c", "", "Path to the config startup commands")
 	return &rootCmd
 }
