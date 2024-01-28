@@ -3,6 +3,7 @@ package producer
 import (
 	"strings"
 	"sync"
+	"tradingplatform/shared/communication"
 	sharedent "tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/utils"
@@ -59,7 +60,7 @@ func StopTopicHandler(topic string) {
 }
 
 func handleTopic(handler *utils.Handler[sharedent.Message]) {
-	nc, _ := nats.Connect(nats.DefaultURL)
+	nc, _ := nats.Connect(communication.GetNatsURL())
 
 	defer nc.Close()
 	for msg := range handler.Ch {

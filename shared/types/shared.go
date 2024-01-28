@@ -43,7 +43,6 @@ const (
 const (
 	Plain    SentimentAnalysisProcess = "plain"
 	Semantic SentimentAnalysisProcess = "semantic"
-	Auto     SentimentAnalysisProcess = "auto"
 )
 
 func GetAssetClassMap() map[string]AssetClass {
@@ -58,6 +57,5 @@ func GetSentimentAnalysisProcessMap() map[string]SentimentAnalysisProcess {
 	return map[string]SentimentAnalysisProcess{
 		"plain":    Plain,
 		"semantic": Semantic,
-		"auto":     Auto,
 	}
 }
