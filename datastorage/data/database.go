@@ -1,8 +1,10 @@
 package data
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 	"tradingplatform/shared/logging"
 
@@ -19,6 +21,84 @@ func SetDSN(d string) {
 	dsn = d
 }
 
+const DatabaseConnectionAttempts = 3
+
+func hasDatabaseName(dsn string) bool {
+	splitDsn := strings.Split(dsn, " ")
+	for _, element := range splitDsn {
+		if strings.Contains(element, "dbname") {
+			return true
+		}
+	}
+	return false
+}
+
+func getDatabaseName(dsn string) (string, bool) {
+	if !hasDatabaseName(dsn) {
+		return "", false
+	}
+
+	splitDsn := strings.Split(dsn, " ")
+	for _, element := range splitDsn {
+		if strings.Contains(element, "dbname") {
+			return strings.Split(element, "=")[1], true
+		}
+	}
+	return "", false
+}
+
+func getDsnRoot(dsn string) string {
+	splitDsn := strings.Split(dsn, " ")
+	var dsnRoot []string
+	for _, element := range splitDsn {
+		if !strings.Contains(element, "dbname") {
+			dsnRoot = append(dsnRoot, element)
+		}
+	}
+	return strings.Join(dsnRoot, " ")
+}
+
+// NOTE: Only the following dsn format is supported:
+// "host=somehost user=someuser password=somepassword dbname=somedb port=someport"
+func createDatabaseIfNotExists(dsn string, attempts int) {
+	var db *gorm.DB
+	var err error
+	currentAttempt := attempts
+	dbName, exists := getDatabaseName(dsn)
+	logging.Log().Debug().Str("dbName", dbName).Msg("checking if database exists")
+	if !exists {
+		logging.Log().Debug().Msg("no database name found in dsn")
+		logging.Log().Warn().Msg(`Only the following dsn format is supported:
+		host=somehost user=someuser password=somepassword dbname=somedb port=someport`)
+		return
+	}
+	dsnRoot := getDsnRoot(dsn)
+	for currentAttempt != 0 && db == nil {
+		db, err = gorm.Open(postgres.Open(dsnRoot), &gorm.Config{})
+		if err != nil {
+			if currentAttempt == 1 {
+				logging.Log().Error().Str("dbName", dbName).Err(err).Msg("failed to connect to the database in the database creation step")
+				panic("failed to connect to the database in the database creation step: " + err.Error())
+			}
+			db = nil
+		}
+		currentAttempt--
+		time.Sleep(time.Second * 1)
+	}
+	var count int64
+	db.Raw("SELECT COUNT(*) FROM pg_database WHERE datname = ?", dbName).Scan(&count)
+	if count > 0 {
+		logging.Log().Debug().Str("dbName", dbName).Msg("database already exists")
+		return
+	}
+	result := db.Exec(fmt.Sprintf("CREATE DATABASE %s;", dbName))
+	if result.Error != nil {
+		logging.Log().Error().Str("dbName", dbName).Err(err).Msg("failed to create the database")
+		panic("failed to create the database: " + result.Error.Error())
+	}
+
+}
+
 // Initialize the database connection and returns the database object and cancel function
 func InitializeDatabase() (*gorm.DB, func()) {
 	newLogger := logger.New(
@@ -29,6 +109,9 @@ func InitializeDatabase() (*gorm.DB, func()) {
 			Colorful:      false,        // Disable color
 		},
 	)
+
+	createDatabaseIfNotExists(dsn, DatabaseConnectionAttempts)
+
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: newLogger,
 	})
@@ -37,6 +120,7 @@ func InitializeDatabase() (*gorm.DB, func()) {
 		logging.Log().Error().Err(err).Msg("failed to connect to remote database")
 		panic(err)
 	}
+	logging.Log().Debug().Str("dsn", dsn).Msg("connected to database successfully")
 
 	sqlDB, err := db.DB()
 	if err != nil {
