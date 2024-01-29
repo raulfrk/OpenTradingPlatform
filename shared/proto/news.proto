@@ -29,5 +29,6 @@ message NewsSentiment {
     string Symbol = 7;
     string SystemPrompt = 8;
     bool Failed = 9;
+    string rawSentiment = 10;
 }
 
