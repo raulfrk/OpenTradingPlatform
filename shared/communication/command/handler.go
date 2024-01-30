@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
 	"tradingplatform/shared/utils"
@@ -146,7 +147,7 @@ func handleCLICommand(m *nats.Msg, handler *utils.Handler[string], cliHandler fu
 }
 
 func handleCommand(handler *utils.Handler[string], component types.Component, cliHandler func() *cobra.Command, jsonHandler func(context.Context, string) string) {
-	nc, err := nats.Connect(nats.DefaultURL, nats.FlusherTimeout(0))
+	nc, err := nats.Connect(communication.GetNatsURL(), nats.FlusherTimeout(0))
 	ctx := handler.Ctx()
 	if err != nil {
 		logging.Log().Fatal().Err(err).Msg("NATS client could not connect to handle command")

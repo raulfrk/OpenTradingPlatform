@@ -1,0 +1,69 @@
+version: "3.5"
+services:
+  nats:
+    image: nats
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+    volumes:
+      - ./nats-conf/nats-server.conf:/nats-server.conf
+    command: ["-c","/nats-server.conf"]
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+    ports:
+      - 5432:5432
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+  dataprovider:
+    depends_on:
+      - nats
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - ALPACA_KEY=${ALPACA_KEY}
+      - ALPACA_SECRET=${ALPACA_SECRET}
+    command:
+      - "/app/component"
+      - "-n"
+      - "${NATS_URL}"
+  datastorage:
+    depends_on:
+      - nats
+      - db
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - COMPONENT=datastorage
+    command:
+      - "/app/component"
+      - "-d"
+      - "postgres://postgres:example@db:5432/test"
+      - "-c"
+      - "./data_storage_startup_subscription.json"
+      - "-n"
+      - "${NATS_URL}"
+    
+  sentimentanalyzer:
+      depends_on:
+        - nats
+      build:
+        context: .
+        dockerfile: Dockerfile
+        args:
+          - COMPONENT=sentimentanalyzer
+      environment:
+        - OLLAMA_SERVER_URL=${OLLAMA_SERVER_URL}
+      command:
+        - "/app/component"
+        - "-n"
+        - "${NATS_URL}"

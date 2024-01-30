@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/communication/subscriber"
 	"tradingplatform/shared/entities"
@@ -168,7 +169,7 @@ func NewDataRequestFromExisting(dataRequest *DataRequest, defaultingFunc func(*D
 }
 
 func RequestData(ctx context.Context, topic utils.Topic, dataRequest DataRequest, onData func(*entities.Message)) error {
-	nc, _ := nats.Connect(nats.DefaultURL)
+	nc, _ := nats.Connect(communication.GetNatsURL())
 	defer nc.Close()
 
 	// Ensure that confirmation is required

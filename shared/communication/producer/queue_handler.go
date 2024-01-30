@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
 	"tradingplatform/shared/utils"
@@ -53,7 +54,7 @@ func StartQueueHandler(handler *utils.Handler[[]*sharedent.Message], noConfirm b
 }
 
 func handleQueue(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
-	nc, err := nats.Connect(nats.DefaultURL)
+	nc, err := nats.Connect(communication.GetNatsURL())
 	var topic string
 	if err != nil {
 		logging.Log().Fatal().Err(err).Msg("connecting to NATS")
