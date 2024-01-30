@@ -40,9 +40,7 @@ func NewRootCmd() *cobra.Command {
 
 			// Register the channel to receive SIGINT and SIGTERM signals
 			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-			// TODO: Update this for this particular component
-			// localDbCleanup := data.InitializeDataStorageLocalDatabase()
-			// defer localDbCleanup()
+
 			command.StartCommandHandler(types.SentimentAnalyzer, cli.NewRootCmd, json.HandleJSONCommand)
 			cmdHandler := command.GetCommandHandler()
 

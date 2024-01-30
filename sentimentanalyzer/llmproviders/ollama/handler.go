@@ -11,6 +11,7 @@ import (
 	"github.com/tmc/langchaingo/llms/ollama"
 )
 
+// HandleAnalysisNews handles the semtiment analysis of news using the ollama tool
 func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.SentimentAnalysisRequest) (string, error) {
 	var systemPrompt string
 	var err error
@@ -19,9 +20,9 @@ func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.
 
 	switch req.SentimentAnalysisProcess {
 	case types.Plain:
-		newsText = fmt.Sprintf("Symbol:%s\nNews:%s", news.Headline, req.GetSymbol())
+		newsText = fmt.Sprintf("Symbol:%s\nNews: %s", news.Headline, req.GetSymbol())
 	case types.Semantic:
-		newsText = fmt.Sprintf("Symbols:%s\nNews:%s", news.Headline, strings.Join(news.Symbols, ","))
+		newsText = fmt.Sprintf("Symbols:%s\nNews: %s", news.Headline, strings.Join(news.Symbols, ","))
 
 	default:
 		return "", fmt.Errorf("sentiment analysis process %s does not have an implementation", req.SentimentAnalysisProcess)
@@ -30,10 +31,10 @@ func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.
 		return "", err
 	}
 
-	return HandleAnalysis(ctx, systemPrompt, newsText, req.Model)
+	return handleAnalysis(ctx, systemPrompt, newsText, req.Model)
 }
 
-func HandleAnalysis(ctx context.Context, systemPrompt string, news string, model string) (string, error) {
+func handleAnalysis(ctx context.Context, systemPrompt string, news string, model string) (string, error) {
 	llm, err := ollama.New(ollama.WithModel(model), ollama.WithSystemPrompt(systemPrompt))
 	if err != nil {
 		return "", fmt.Errorf("while creating ollama implementation: %v", err)

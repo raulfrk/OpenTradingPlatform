@@ -19,13 +19,15 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		return types.NewError(err).Respond()
 	}
 
+	// Register cancel function
 	if jsonCommand.CancelKey != "" {
 		cancelKey := jsonCommand.CancelKey
 		err := command.AddCancelFunc(cancelKey, ctx.Value(command.CancelKey{}).(context.CancelFunc))
 		if err != nil {
-			logging.Log().Error().Err(err).Msg("Error adding cancel function")
+			logging.Log().Error().Str("key", cancelKey).Err(err).Msg("adding cancel function")
 			return types.NewError(err).Respond()
 		}
+		logging.Log().Info().Str("key", cancelKey).Msg("added cancel function")
 		defer command.RemoveCancelFunc(cancelKey)
 	}
 
@@ -61,6 +63,7 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
+		// Create a new request that is validated
 		validatedRequest, err := requests.NewSentimentAnalysisRequestFromExisting(&dataRequest,
 			requests.DefaultForEmptySentimentAnalysisRequest)
 

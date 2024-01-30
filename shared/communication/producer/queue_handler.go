@@ -18,6 +18,7 @@ import (
 var queues = make(map[string]*utils.Handler[[]*sharedent.Message])
 var queuesMutex sync.RWMutex
 
+// GetQueueHandler returns a queue handler for a topic
 func GetQueueHandler(topic string, noConfirm bool) (*utils.Handler[[]*sharedent.Message], types.DataResponse) {
 
 	queuesMutex.RLock()
@@ -44,6 +45,7 @@ func GetQueueHandler(topic string, noConfirm bool) (*utils.Handler[[]*sharedent.
 	)
 }
 
+// StartQueueHandler starts a queue handler
 func StartQueueHandler(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
 	ich := make(chan *[]*sharedent.Message)
 	handler.SetChannel(ich)

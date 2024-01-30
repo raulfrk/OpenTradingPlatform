@@ -19,6 +19,7 @@ var commandHandler *utils.Handler[string]
 var cancelKeys = make(map[string]context.CancelFunc)
 var cancelKeyMutex sync.RWMutex
 
+// CancelFunc is a function that can be used to get the cancel function for a command
 func GetCancelFunc(key string) (context.CancelFunc, bool) {
 	cancelKeyMutex.RLock()
 	defer cancelKeyMutex.RUnlock()
@@ -26,6 +27,7 @@ func GetCancelFunc(key string) (context.CancelFunc, bool) {
 	return cancelFunc, ok
 }
 
+// AddCancelFunc adds a cancel function for a command, returns an error if the key already exists
 func AddCancelFunc(key string, cancelFunc context.CancelFunc) error {
 	cancelKeyMutex.Lock()
 	defer cancelKeyMutex.Unlock()
@@ -36,6 +38,7 @@ func AddCancelFunc(key string, cancelFunc context.CancelFunc) error {
 	return nil
 }
 
+// RemoveCancelFunc removes a cancel function for a command
 func RemoveCancelFunc(key string) {
 	cancelKeyMutex.Lock()
 	defer cancelKeyMutex.Unlock()
@@ -48,6 +51,7 @@ func StartCommandHandler(component types.Component, cliHandler func() *cobra.Com
 	go handleCommand(commandHandler, component, cliHandler, jsonHandler)
 }
 
+// GetCommandHandler returns the command handler
 func GetCommandHandler() *utils.Handler[string] {
 	return commandHandler
 }
@@ -68,7 +72,7 @@ func handleJSONCommand(m *nats.Msg, handler *utils.Handler[string], jsonHandler 
 	response := jsonHandler(context.WithValue(childContext, CancelKey{}, cancel), string(m.Data[4:]))
 	if len(response) == 0 {
 		m.Respond([]byte(types.NewError(
-			fmt.Errorf("no response from command due to invalid command, or component might have quit"),
+			fmt.Errorf("no response provided, either component quit or command was cancelled"),
 		).Respond()))
 		return
 	}
@@ -134,7 +138,7 @@ func handleCLICommand(m *nats.Msg, handler *utils.Handler[string], cliHandler fu
 	// If command produced no response, the command is considered to have failed
 	if buf.Len() == 0 {
 		m.Respond([]byte(types.NewError(
-			fmt.Errorf("no response from command due to invalid command or component might have quit"),
+			fmt.Errorf("no response provided, either component quit or command was cancelled"),
 		).Respond()))
 		return
 	}

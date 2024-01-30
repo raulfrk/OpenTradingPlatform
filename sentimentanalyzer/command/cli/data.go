@@ -38,23 +38,23 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 			endTime, _ := cmd.Flags().GetInt64("end-time")
 			noConfirm, _ := cmd.Flags().GetBool("no-confirm")
 			failFastOnBadSentiment, _ := cmd.Flags().GetBool("fail-fast-bad-sentiment")
+			model, _ := cmd.Flags().GetString("model")
+			sentimentAnalysisProcess, _ := cmd.Flags().GetString("process")
 
+			// Register cancel function
 			err := command.AddCancelFunc(cancelKey, cmd.Context().Value(command.CancelKey{}).(context.CancelFunc))
 			if err != nil {
-				logging.Log().Error().Err(err).Msg("Error adding cancel function")
+				logging.Log().Error().Err(err).Msg("adding cancel function")
 				cmd.PrintErr(types.NewError(err).Respond())
 				return
 			}
 			defer command.RemoveCancelFunc(cancelKey)
 
-			model, _ := cmd.Flags().GetString("model")
-
-			sentimentAnalysisProcess, _ := cmd.Flags().GetString("process")
 			dataReq, err := requests.NewDataRequestFromRaw(
 				source,
 				string(types.News),
 				symbol,
-				"get",
+				string(types.DataGetOp),
 				string(types.RawText),
 				"",
 				startTime,
@@ -64,10 +64,10 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 				requests.DefaultForEmptyDataRequest,
 			)
 			if err != nil {
-				logging.Log().Error().Err(err).Msg("Error creating data request")
+				logging.Log().Error().Err(err).Msg("creating data request")
 			}
-			logging.Log().Debug().Msgf("System prompt: %s", systemPrompt)
-			req, _ := requests.NewSentimentAnalysisRequestFromRaw(
+
+			req, err := requests.NewSentimentAnalysisRequestFromRaw(
 				dataReq,
 				sentimentAnalysisProcess,
 				model,
@@ -76,6 +76,14 @@ func NewAnalyzeFromDBCmd() *cobra.Command {
 				retryFailed,
 				requests.DefaultForEmptySentimentAnalysisRequest,
 			)
+			logging.Log().Info().RawJSON("request", req.JSON()).
+				Msg("received sentiment analysis request")
+			if err != nil {
+				logging.Log().Error().Err(err).Msg("creating sentiment analysis request")
+				cmd.PrintErr(types.NewError(err).Respond())
+				return
+			}
+
 			och := make(chan types.DataResponse)
 			go handler.HandleAnalysisRequest(cmd.Context(), &req, och)
 

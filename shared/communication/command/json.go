@@ -21,6 +21,7 @@ type JSONCommand struct {
 	CancelKey     string          `json:"cancelKey"`
 }
 
+// JSONWithHeader returns the JSONCommand as a string with the "json" prefix.
 func (r *JSONCommand) JSONWithHeader() string {
 	j, _ := json.Marshal(r)
 	return fmt.Sprintf("json%s", j)
