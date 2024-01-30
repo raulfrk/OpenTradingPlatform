@@ -42,6 +42,7 @@ type Sentiment struct {
 	Symbol       string
 	SystemPrompt string
 	Failed       bool
+	RawSentiment string
 }
 
 type LLM struct {
@@ -59,6 +60,7 @@ func SentimentFromEntity(entity *entities.NewsSentiment) Sentiment {
 		Symbol:                   entity.Symbol,
 		SystemPrompt:             entity.SystemPrompt,
 		Failed:                   entity.Failed,
+		RawSentiment:             entity.RawSentiment,
 	}
 }
 
@@ -99,6 +101,7 @@ func SentimentToEntity(sentiment Sentiment) *entities.NewsSentiment {
 		Symbol:                   sentiment.Symbol,
 		SystemPrompt:             sentiment.SystemPrompt,
 		Failed:                   sentiment.Failed,
+		RawSentiment:             sentiment.RawSentiment,
 	}
 }
 
