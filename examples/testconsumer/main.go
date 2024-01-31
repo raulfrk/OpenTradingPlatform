@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/entities"
 	"tradingplatform/shared/types"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func main() {
-	nc, _ := nats.Connect(nats.DefaultURL)
+	nc, _ := nats.Connect(communication.GetNatsURL())
 	defer nc.Close()
 	nc.Subscribe("dataprovider.stream.>", func(msg *nats.Msg) {
 		var message entities.Message

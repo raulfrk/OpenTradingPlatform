@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/entities"
 
 	"github.com/nats-io/nats.go"
@@ -71,7 +72,7 @@ func main() {
 	db.AutoMigrate(&BarDB{})
 
 	// Connect to nats and subscribe to a channel
-	nc, _ := nats.Connect(nats.DefaultURL)
+	nc, _ := nats.Connect(communication.GetNatsURL())
 	// Use a buffered channel with an appropriate size
 	nc.Subscribe("dataprovider.*.alpaca.*.bar.>", func(m *nats.Msg) {
 		var newBar entities.Bar

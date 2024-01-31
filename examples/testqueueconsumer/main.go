@@ -3,6 +3,7 @@ package main
 import (
 	"sort"
 	"sync"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/entities"
 
 	"github.com/nats-io/nats.go"
@@ -15,7 +16,7 @@ func main() {
 	// Receive messages from the queue
 	// Unmarshal the message
 	// Print the message
-	nc, err := nats.Connect(nats.DefaultURL)
+	nc, err := nats.Connect(communication.GetNatsURL())
 	if err != nil {
 
 		log.Fatal().Err(err).Msg("connecting to JetStream")

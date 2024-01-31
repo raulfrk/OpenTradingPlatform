@@ -9,6 +9,7 @@ import (
 
 	"tradingplatform/sentimentanalyzer/command/cli"
 	"tradingplatform/sentimentanalyzer/command/json"
+	"tradingplatform/shared/communication"
 	"tradingplatform/shared/communication/command"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
@@ -24,7 +25,9 @@ func NewRootCmd() *cobra.Command {
 		Short: "SentimentAnalyzer startup command",
 		Run: func(cmd *cobra.Command, args []string) {
 			startupConfig, _ := cmd.Flags().GetString("startup-commands")
-			nc, err := nats.Connect(nats.DefaultURL)
+			natsURL, _ := cmd.Flags().GetString("nats-url")
+			communication.SetNatsURL(natsURL)
+			nc, err := nats.Connect(communication.GetNatsURL())
 			if err != nil {
 				panic(err)
 			}
@@ -34,6 +37,10 @@ func NewRootCmd() *cobra.Command {
 			mlLogger := logging.NewMultiLevelLogger(types.SentimentAnalyzer,
 				os.Stdout, logging.NewNatsWriter(nc, loggingTopic))
 			logging.SetLogger(&mlLogger)
+
+			logging.Log().Info().
+				Str("natsUrl", communication.GetNatsURL()).
+				Msg("starting sentimentanalyzer, remote logging enabled")
 
 			// Create a channel to receive OS signals
 			sigs := make(chan os.Signal, 1)
@@ -76,5 +83,6 @@ func NewRootCmd() *cobra.Command {
 		},
 	}
 	rootCmd.Flags().StringP("startup-commands", "c", "", "Path to the config startup commands")
+	rootCmd.Flags().StringP("nats-url", "n", communication.GetNatsURL(), "NATS server URL")
 	return &rootCmd
 }
