@@ -47,7 +47,7 @@ services:
     command:
       - "/app/component"
       - "-d"
-      - "postgres://postgres:example@db:5432/test"
+      - "host=db port=5432 user=postgres password=example dbname=opentradingplatform sslmode=disable"
       - "-c"
       - "./data_storage_startup_subscription.json"
       - "-n"

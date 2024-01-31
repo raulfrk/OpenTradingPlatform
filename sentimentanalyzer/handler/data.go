@@ -145,6 +145,7 @@ func handleJSONResponse(analyzedSentiment string, n *entities.News, req *request
 			Symbol:                   k,
 			SystemPrompt:             req.SystemPrompt,
 			Failed:                   failed,
+			RawSentiment:             analyzedSentiment,
 		}
 		existingSentiment := findMatchingSentiment(n, &sentiment)
 		if existingSentiment != nil {
@@ -197,6 +198,7 @@ func handlePlainResponse(analyzedSentiment string, n *entities.News, req *reques
 		Symbol:                   req.GetSymbol(),
 		SystemPrompt:             req.SystemPrompt,
 		Failed:                   failed,
+		RawSentiment:             analyzedSentiment,
 	}
 
 	existingSentiment := findMatchingSentiment(n, &sentiment)
