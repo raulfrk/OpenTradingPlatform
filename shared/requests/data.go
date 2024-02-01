@@ -157,7 +157,7 @@ func NewDataRequestFromRaw(source string,
 
 func NewDataRequestFromExisting(dataRequest *DataRequest, defaultingFunc func(*DataRequest)) (DataRequest, error) {
 	return NewDataRequestFromRaw(string(dataRequest.Source),
-		string(types.AssetClass(dataRequest.AssetClass)),
+		string(dataRequest.AssetClass),
 		dataRequest.Symbol,
 		string(dataRequest.Operation),
 		string(dataRequest.DataType),

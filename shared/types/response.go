@@ -63,10 +63,10 @@ func NewResponse(status OpStatus, message string, err error) Response {
 }
 
 func NewStreamError(err error, streams string) StreamResponse {
-	return NewStreamResponse(Failure, "", err, streams)
+	return NewStreamResponse(Failure, "", err, streams, "")
 }
 
-func NewStreamResponse(status OpStatus, message string, err error, streams string) StreamResponse {
+func NewStreamResponse(status OpStatus, message string, err error, streams string, topics string) StreamResponse {
 	errStr := ""
 	if err != nil {
 		errStr = err.Error()
@@ -74,6 +74,7 @@ func NewStreamResponse(status OpStatus, message string, err error, streams strin
 	newResponse := StreamResponse{
 
 		Streams: streams,
+		Topics:  topics,
 	}
 	newResponse.Err = errStr
 	newResponse.Message = message

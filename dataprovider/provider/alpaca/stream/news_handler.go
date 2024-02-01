@@ -132,6 +132,7 @@ func handleAlpacaNewsStreamAddRequest(client *astream.NewsClient,
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully added news stream",
+		alpaca.GenerateJSONStreamTopicDict(types.News, []types.DataType{types.RawText}, req.GetSymbol()),
 		nil,
 		types.News,
 	)
@@ -168,6 +169,7 @@ func handleAlpacaNewsStreamRemoveRequest(client *astream.NewsClient,
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully unsubscribed from news stream",
+		alpaca.GenerateJSONStreamTopicDict(types.News, []types.DataType{types.RawText}, req.GetSymbol()),
 		nil,
 		types.News,
 	)

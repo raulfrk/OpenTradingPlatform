@@ -104,6 +104,8 @@ func handleAlpacaCryptoStreamAddRequest(client *astream.CryptoClient,
 	dtypes := req.GetDataType()
 	symbols := req.GetSymbol()
 
+	dtypesHandled := []types.DataType{}
+
 	for _, dtype := range dtypes {
 		var err error
 		clientLock.Lock()
@@ -207,11 +209,14 @@ func handleAlpacaCryptoStreamAddRequest(client *astream.CryptoClient,
 				Msg("subscribing to crypto stream")
 			return provider.NewStreamError(err)
 		}
+		dtypesHandled = append(dtypesHandled, dtype)
 		data.AddDataProviderStreamForDType(req, dtype)
 	}
+
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully subscribed to crypto streams",
+		alpaca.GenerateJSONStreamTopicDict(types.Crypto, dtypesHandled, req.GetSymbol()),
 		nil, types.Crypto)
 }
 
@@ -221,6 +226,8 @@ func handleAlpacaCryptoStreamRemoveRequest(client *astream.CryptoClient,
 
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("removing crypto stream")
 	symbols := req.GetSymbol()
+
+	dtypesHandled := []types.DataType{}
 
 	for _, dtype := range req.GetDataType() {
 		clientLock.Lock()
@@ -255,6 +262,7 @@ func handleAlpacaCryptoStreamRemoveRequest(client *astream.CryptoClient,
 			tTopic := alpaca.NewCryptoStreamTopic(dtype, symbol).Generate()
 			producer.StopTopicHandler(tTopic)
 		}
+		dtypesHandled = append(dtypesHandled, dtype)
 
 		data.RemoveDataProviderStreamForDType(req, dtype)
 	}
@@ -262,6 +270,7 @@ func handleAlpacaCryptoStreamRemoveRequest(client *astream.CryptoClient,
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully unsubscribed from crypto streams",
+		alpaca.GenerateJSONStreamTopicDict(types.Crypto, dtypesHandled, req.GetSymbol()),
 		nil,
 		types.Crypto,
 	)

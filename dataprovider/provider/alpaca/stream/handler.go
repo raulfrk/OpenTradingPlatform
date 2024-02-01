@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"tradingplatform/dataprovider/data"
 	"tradingplatform/dataprovider/provider"
 	"tradingplatform/dataprovider/provider/alpaca"
 	sharedent "tradingplatform/shared/entities"
@@ -112,9 +113,17 @@ func handleOnStreamData[T any,
 
 // Provide a response with the active streams
 func handleAlpacaStreamGetRequest(req requests.StreamRequest, assetClass types.AssetClass) types.StreamResponse {
+	streams := data.GetDataProviderStreamsAssetClass(assetClass)
+	dtypes := []types.DataType{}
+	symbols := []string{}
+	for _, stream := range streams {
+		dtypes = append(dtypes, stream.DataType)
+		symbols = append(symbols, stream.Symbol)
+	}
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully retrieved streams",
+		alpaca.GenerateJSONStreamTopicDict(types.Crypto, dtypes, symbols),
 		nil, assetClass)
 }
 
