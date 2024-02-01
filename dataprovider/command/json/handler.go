@@ -32,7 +32,7 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		if err != nil {
 			return types.NewError(err).Respond()
 		}
-		validatedStreamRequest, err := requests.NewStreamRequestFromExisting(&streamRequest, requests.DefaultForEmptyStreamRequest)
+		validatedStreamRequest, err := requests.NewStreamRequestFromExisting(&streamRequest, requests.DefaultForEmptyStreamAddDeleteRequest)
 		if err != nil {
 			return types.NewError(err).Respond()
 		}

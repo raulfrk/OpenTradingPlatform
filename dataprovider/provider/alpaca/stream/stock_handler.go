@@ -103,6 +103,8 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 	clientLock *sync.RWMutex, req requests.StreamRequest) types.StreamResponse {
 	dtypes := req.GetDataType()
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("adding stocks stream")
+	dtypesHandled := []types.DataType{}
+
 	for _, dtype := range dtypes {
 		var err error
 		logging.Log().Debug().
@@ -221,11 +223,13 @@ func handleAlpacaStockStreamAddRequest(client *astream.StocksClient,
 				Msg("subscribing to Alpaca stocks stream")
 			return provider.NewStreamError(err)
 		}
+		dtypesHandled = append(dtypesHandled, dtype)
 		data.AddDataProviderStreamForDType(req, dtype)
 	}
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully added Alpaca stocks stream",
+		alpaca.GenerateJSONStreamTopicDict(types.Stock, dtypesHandled, req.GetSymbol()),
 		nil,
 		types.Stock,
 	)
@@ -238,6 +242,8 @@ func handleAlpacaStockStreamRemoveRequest(client *astream.StocksClient,
 
 	logging.Log().Info().RawJSON("request", req.JSON()).Msg("removing crypto stream")
 	symbols := req.GetSymbol()
+
+	dtypesHandled := []types.DataType{}
 
 	for _, dtype := range req.GetDataType() {
 		clientLock.Lock()
@@ -274,12 +280,14 @@ func handleAlpacaStockStreamRemoveRequest(client *astream.StocksClient,
 			tTopic := alpaca.NewStockStreamTopic(dtype, symbol).Generate()
 			producer.StopTopicHandler(tTopic)
 		}
+		dtypesHandled = append(dtypesHandled, dtype)
 		data.RemoveDataProviderStreamForDType(req, dtype)
 	}
 
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully unsubscribed from stock streams",
+		alpaca.GenerateJSONStreamTopicDict(types.Stock, dtypesHandled, req.GetSymbol()),
 		nil,
 		types.Stock,
 	)

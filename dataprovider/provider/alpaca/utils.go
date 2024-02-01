@@ -1,7 +1,9 @@
 package alpaca
 
 import (
+	"encoding/json"
 	"fmt"
+	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
 	"tradingplatform/shared/utils"
 )
@@ -36,4 +38,28 @@ func GetStreamTopicRoot(assetClass types.AssetClass) string {
 
 func GetDataTopicRoot(assetClass types.AssetClass) string {
 	return fmt.Sprintf("%s.%s.%s.%s", types.DataProvider, types.Data, types.Alpaca, assetClass)
+}
+
+func GenerateJSONStreamTopicDict(assetClass types.AssetClass, dataTypes []types.DataType, symbols []string) string {
+	tmap := map[types.DataType][]string{}
+	for _, dataType := range dataTypes {
+		value, exists := tmap[dataType]
+		if !exists {
+			tmap[dataType] = []string{}
+		}
+		for _, symbol := range symbols {
+			value = append(value, NewStreamTopic(assetClass, dataType, symbol).Generate())
+		}
+		tmap[dataType] = value
+	}
+	json, err := json.Marshal(tmap)
+	dtypesStr := []string{}
+	for _, dtype := range dataTypes {
+		dtypesStr = append(dtypesStr, string(dtype))
+	}
+	if err != nil {
+		logging.Log().Error().Str("assetClass", string(assetClass)).Strs("dataTypes", dtypesStr).Strs("symbols", symbols).Err(err).Msg("generating topics")
+		return ""
+	}
+	return string(json)
 }
