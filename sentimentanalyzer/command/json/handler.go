@@ -52,7 +52,7 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		command.GetCommandHandler().Cancel()
 		return types.NewResponse(
 			types.Success,
-			"Gracefully shutting down DataProvider",
+			"Gracefully shutting down SentimentAnalyzer",
 			nil,
 		).Respond()
 	}
