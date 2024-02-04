@@ -1,15 +1,17 @@
 package ollama
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"tradingplatform/shared/entities"
+	"tradingplatform/shared/logging"
 	"tradingplatform/shared/requests"
 	"tradingplatform/shared/types"
-
-	"github.com/tmc/langchaingo/llms/ollama"
 )
 
 func GetOllamaServerURL() string {
@@ -30,9 +32,9 @@ func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.
 
 	switch req.SentimentAnalysisProcess {
 	case types.Plain:
-		newsText = fmt.Sprintf("Symbol:%s\nNews: %s", news.Headline, req.GetSymbol())
+		newsText = fmt.Sprintf("Symbol:%s News: %s", req.GetSymbol(), news.Headline)
 	case types.Semantic:
-		newsText = fmt.Sprintf("Symbols:%s\nNews: %s", news.Headline, strings.Join(news.Symbols, ","))
+		newsText = fmt.Sprintf("Symbols:%s News: %s", strings.Join(news.Symbols, ","), news.Headline)
 
 	default:
 		return "", fmt.Errorf("sentiment analysis process %s does not have an implementation", req.SentimentAnalysisProcess)
@@ -45,16 +47,56 @@ func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.
 }
 
 func handleAnalysis(ctx context.Context, systemPrompt string, news string, model string) (string, error) {
-	llm, err := ollama.New(ollama.WithModel(model), ollama.WithSystemPrompt(systemPrompt), ollama.WithServerURL(GetOllamaServerURL()))
-	if err != nil {
-		return "", fmt.Errorf("while creating ollama implementation: %v", err)
+	url := fmt.Sprintf("%s/api/chat", GetOllamaServerURL())
+
+	// Define the request payload
+	requestPayload := map[string]interface{}{
+		"model": model,
+		"messages": []map[string]string{
+			{
+				"role":    "system",
+				"content": systemPrompt,
+			},
+			{
+				"role":    "user",
+				"content": news,
+			},
+		},
+		"stream": false,
 	}
 
-	query := news
-	completion, err := llm.Call(ctx, query)
+	// Convert request payload to JSON
+	requestPayloadJSON, err := json.Marshal(requestPayload)
 	if err != nil {
-		return "", fmt.Errorf("while calling ollama implementation: %v", err)
-
+		logging.Log().Error().Err(err).Msg("marshalling request payload to JSON")
+		return "", err
 	}
-	return completion, nil
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(requestPayloadJSON))
+	if err != nil {
+		logging.Log().Error().Err(err).Msg("creating HTTP request")
+		return "", err
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		logging.Log().Error().Err(err).Msg("sending HTTP request")
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var response map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		logging.Log().Error().Err(err).Msg("decoding response body")
+		return "", err
+	}
+	if response["message"] == nil {
+		return "", nil
+	}
+	message := response["message"].(map[string]interface{})
+	assistantContent := message["content"].(string)
+
+	return assistantContent, nil
 }

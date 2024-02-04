@@ -15,6 +15,9 @@ func NewSentimentDataTopic(symbol string, queueID string, queueCount int) utils.
 // ExtractSentimentFromLLMAnswer extracts the sentiment from the answer of the LLM
 func ExtractSentimentFromLLMAnswer(answer string) (string, error) {
 	lower := strings.ToLower(answer)
+	lower = strings.ReplaceAll(lower, ".", "")
+	lower = strings.ReplaceAll(lower, ":", "")
+	lower = strings.ReplaceAll(lower, "sentiment", "")
 	lower = strings.TrimSpace(lower)
 	if lower == "positive" || lower == "neutral" || lower == "negative" {
 		return lower, nil
