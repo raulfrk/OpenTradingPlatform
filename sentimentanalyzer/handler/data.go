@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
+	"tradingplatform/sentimentanalyzer/llmproviders/gpt4all"
 	"tradingplatform/sentimentanalyzer/llmproviders/ollama"
 	"tradingplatform/sentimentanalyzer/sentiment"
 	"tradingplatform/shared/communication/producer"
@@ -24,12 +26,36 @@ import (
 func HandleAnalysisRequest(ctx context.Context, req *requests.SentimentAnalysisRequest, och chan<- types.DataResponse) {
 	switch req.ModelProvider {
 	case types.Ollama:
-		och <- HandleAnalysisNewsFromDB(ctx, req, ollama.HandleAnalysisNews)
+		och <- HandleAnalysisNewsFromDB(ctx, req, ollama.HandleAnalysis)
+	case types.GPT4All:
+		och <- HandleAnalysisNewsFromDB(ctx, req, gpt4all.HandleAnalysis)
 	default:
 		err := fmt.Errorf("provided model provider \"%s\" is not currently supported", req.ModelProvider)
 		logging.Log().Debug().Err(err).RawJSON("request", req.JSON()).Msg("while handling sentiment analysis request")
 		och <- types.NewDataError(err)
 	}
+}
+
+func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.SentimentAnalysisRequest, analysisF func(context.Context, string, string, string) (string, error)) (string, error) {
+	var systemPrompt string
+	var err error
+	var newsText string
+	systemPrompt, err = req.GetSystemPrompt()
+
+	switch req.SentimentAnalysisProcess {
+	case types.Plain:
+		newsText = fmt.Sprintf("Symbol:%s News: %s", req.GetSymbol(), news.Headline)
+	case types.Semantic:
+		newsText = fmt.Sprintf("Symbols:%s News: %s", strings.Join(news.Symbols, ","), news.Headline)
+
+	default:
+		return "", fmt.Errorf("sentiment analysis process %s does not have an implementation", req.SentimentAnalysisProcess)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return analysisF(ctx, systemPrompt, newsText, req.Model)
 }
 
 func isValidJSON(s string) bool {
@@ -48,7 +74,7 @@ func worker(ctx context.Context,
 	jobsCh <-chan *entities.News,
 	resultsCh chan<- *entities.News,
 	errCh chan<- error,
-	wg *sync.WaitGroup, req *requests.SentimentAnalysisRequest, analysisF func(context.Context, *entities.News, *requests.SentimentAnalysisRequest) (string, error)) {
+	wg *sync.WaitGroup, req *requests.SentimentAnalysisRequest, analysisF func(context.Context, string, string, string) (string, error)) {
 	defer wg.Done()
 	for n := range jobsCh {
 		// Check if news already has sentiment with given LLM, symbol and process or if it already failed previously
@@ -76,7 +102,7 @@ func worker(ctx context.Context,
 			continue
 		}
 		childCtx, cancel := context.WithCancel(ctx)
-		analyzedSentiment, err := analysisF(childCtx, n, req)
+		analyzedSentiment, err := HandleAnalysisNews(childCtx, n, req, analysisF)
 		if err != nil {
 			errCh <- err
 			cancel()
@@ -214,7 +240,7 @@ func handlePlainResponse(analyzedSentiment string, n *entities.News, req *reques
 }
 
 // Handle analysis request for news in the database
-func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalysisRequest, analysisF func(context.Context, *entities.News, *requests.SentimentAnalysisRequest) (string, error)) types.DataResponse {
+func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalysisRequest, analysisF func(context.Context, string, string, string) (string, error)) types.DataResponse {
 	var news []*entities.News
 	logging.Log().Debug().RawJSON("request", req.JSON()).Msg("fetching and analyzing news from database")
 

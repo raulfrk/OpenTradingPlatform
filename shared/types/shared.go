@@ -38,6 +38,7 @@ const (
 	Success           OpStatus    = "success"
 	Failure           OpStatus    = "failure"
 	Ollama            LLMProvider = "ollama"
+	GPT4All           LLMProvider = "gpt4all"
 )
 
 const (
