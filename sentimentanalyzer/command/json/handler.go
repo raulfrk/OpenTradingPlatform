@@ -20,7 +20,7 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 	}
 
 	// Register cancel function
-	if jsonCommand.CancelKey != "" {
+	if jsonCommand.CancelKey != "" && jsonCommand.RootOperation != command.JSONOperationCancel {
 		cancelKey := jsonCommand.CancelKey
 		err := command.AddCancelFunc(cancelKey, ctx.Value(command.CancelKey{}).(context.CancelFunc))
 		if err != nil {
@@ -29,6 +29,23 @@ func HandleJSONCommand(ctx context.Context, jsonStr string) string {
 		}
 		logging.Log().Info().Str("key", cancelKey).Msg("added cancel function")
 		defer command.RemoveCancelFunc(cancelKey)
+	}
+
+	if jsonCommand.RootOperation == command.JSONOperationCancel {
+		cancelFunc, found := command.GetCancelFunc(jsonCommand.CancelKey)
+		cancelKey := jsonCommand.CancelKey
+		if !found {
+			err := fmt.Errorf("cancel function not found for key %s", cancelKey)
+			logging.Log().Error().Str("key", cancelKey).Err(err).Msg("getting cancel function")
+			return types.NewError(err).Respond()
+		}
+		cancelFunc()
+		logging.Log().Info().Str("key", cancelKey).Msg("called cancel function")
+		return types.NewResponse(
+			types.Success,
+			"Cancelled operation",
+			nil,
+		).Respond()
 	}
 
 	if jsonCommand.RootOperation == command.JSONOperationQuit {

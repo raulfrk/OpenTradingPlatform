@@ -11,6 +11,7 @@ const (
 	JSONOperationQuit            JSONOperation = "quit"
 	JSONOperationStream          JSONOperation = "stream"
 	JSONOperationStreamSubscribe JSONOperation = "stream-subscribe"
+	JSONOperationCancel          JSONOperation = "cancel"
 
 	JSONOperationData JSONOperation = "data"
 )
