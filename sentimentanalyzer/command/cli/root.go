@@ -54,7 +54,7 @@ func NewCancelCommand() *cobra.Command {
 			command.RemoveCancelFunc(key)
 			cmd.Print(types.NewResponse(
 				types.Success,
-				"Command canceled",
+				"Command cancelled",
 				nil,
 			).Respond())
 		},
