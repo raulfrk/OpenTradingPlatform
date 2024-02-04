@@ -176,7 +176,7 @@ func InsertNewsWithSentiment(news *entities.News) {
 	DB.Transaction(func(tx *gorm.DB) error {
 		for _, sentiment := range dbNews.Sentiment {
 			sentiment.NewsFingerprint = existingNews.Fingerprint
-			if err := DB.Clauses(clause.OnConflict{
+			if err := tx.Clauses(clause.OnConflict{
 				DoNothing: true,
 			}).Create(&LLM{Name: sentiment.LLMName}).Error; err != nil {
 				logging.Log().Error().
