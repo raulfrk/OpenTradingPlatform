@@ -114,6 +114,7 @@ func NewSentimentAnalysisRequestFromExisting(req *SentimentAnalysisRequest, defa
 
 func GetModelProviderMap() map[string]types.LLMProvider {
 	return map[string]types.LLMProvider{
-		"ollama": types.Ollama,
+		"ollama":  types.Ollama,
+		"gpt4all": types.GPT4All,
 	}
 }

@@ -61,8 +61,8 @@ services:
         dockerfile: Dockerfile
         args:
           - COMPONENT=sentimentanalyzer
-      environment:
-        - OLLAMA_SERVER_URL=${OLLAMA_SERVER_URL}
+      env_file:
+        - .env
       command:
         - "/app/component"
         - "-n"

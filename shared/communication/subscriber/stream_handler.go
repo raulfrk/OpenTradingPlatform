@@ -154,7 +154,7 @@ func DrainQueue(topic string) []*entities.Message {
 	logging.Log().Debug().Str("topic", topic).Msg("received all messages for queue")
 	defer dataQueuesMutex.Unlock()
 	queue := dataQueues[topic]
-	dataQueues[topic] = make([]*entities.Message, 0)
+	dataQueues[topic] = []*entities.Message{}
 	return queue
 }
 

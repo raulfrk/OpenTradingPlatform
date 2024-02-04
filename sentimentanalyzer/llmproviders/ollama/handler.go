@@ -7,11 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
-	"tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
-	"tradingplatform/shared/requests"
-	"tradingplatform/shared/types"
 )
 
 func GetOllamaServerURL() string {
@@ -22,31 +18,7 @@ func GetOllamaServerURL() string {
 	return url
 }
 
-// TODO: Extract general functionality from here and leave only ollama specific things
-// HandleAnalysisNews handles the semtiment analysis of news using the ollama tool
-func HandleAnalysisNews(ctx context.Context, news *entities.News, req *requests.SentimentAnalysisRequest) (string, error) {
-	var systemPrompt string
-	var err error
-	var newsText string
-	systemPrompt, err = req.GetSystemPrompt()
-
-	switch req.SentimentAnalysisProcess {
-	case types.Plain:
-		newsText = fmt.Sprintf("Symbol:%s News: %s", req.GetSymbol(), news.Headline)
-	case types.Semantic:
-		newsText = fmt.Sprintf("Symbols:%s News: %s", strings.Join(news.Symbols, ","), news.Headline)
-
-	default:
-		return "", fmt.Errorf("sentiment analysis process %s does not have an implementation", req.SentimentAnalysisProcess)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	return handleAnalysis(ctx, systemPrompt, newsText, req.Model)
-}
-
-func handleAnalysis(ctx context.Context, systemPrompt string, news string, model string) (string, error) {
+func HandleAnalysis(ctx context.Context, systemPrompt string, news string, model string) (string, error) {
 	url := fmt.Sprintf("%s/api/chat", GetOllamaServerURL())
 
 	// Define the request payload
