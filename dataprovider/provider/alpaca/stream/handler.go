@@ -114,16 +114,26 @@ func handleOnStreamData[T any,
 // Provide a response with the active streams
 func handleAlpacaStreamGetRequest(req requests.StreamRequest, assetClass types.AssetClass) types.StreamResponse {
 	streams := data.GetDataProviderStreamsAssetClass(assetClass)
-	dtypes := []types.DataType{}
-	symbols := []string{}
+	// Create a hash map of the streams
+	dtypes := map[types.DataType]struct{}{}
+	symbols := map[string]struct{}{}
 	for _, stream := range streams {
-		dtypes = append(dtypes, stream.DataType)
-		symbols = append(symbols, stream.Symbol)
+		dtypes[stream.DataType] = struct{}{}
+		symbols[stream.Symbol] = struct{}{}
 	}
+	dtypesSlice := make([]types.DataType, 0, len(dtypes))
+	for dtype := range dtypes {
+		dtypesSlice = append(dtypesSlice, dtype)
+	}
+	symbolsSlice := make([]string, 0, len(symbols))
+	for symbol := range symbols {
+		symbolsSlice = append(symbolsSlice, symbol)
+	}
+
 	return provider.NewStreamResponseAssetClass(
 		types.Success,
 		"Successfully retrieved streams",
-		alpaca.GenerateJSONStreamTopicDict(types.Crypto, dtypes, symbols),
+		alpaca.GenerateJSONStreamTopicDict(assetClass, dtypesSlice, symbolsSlice),
 		nil, assetClass)
 }
 
