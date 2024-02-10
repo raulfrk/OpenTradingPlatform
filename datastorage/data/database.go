@@ -115,7 +115,6 @@ func InitializeDatabase() (*gorm.DB, func()) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: newLogger,
 	})
-
 	if err != nil {
 		logging.Log().Error().Err(err).Msg("failed to connect to remote database")
 		panic(err)
@@ -175,4 +174,22 @@ func InsertBatchEntity[I any](entities []I) {
 		Int("count", len(entities)).
 		Type("entity", entities[0]).
 		Msg("finished inserting batch of entities to db")
+}
+
+func PaginateRequest[T any](tx *gorm.DB, _ T) []T {
+	pageSize := 65000
+	page := 1
+	ents := make([]T, 0)
+	for {
+		var batch []T
+		tx.Offset((page - 1) * pageSize).Limit(pageSize).Find(&batch)
+		ents = append(ents, batch...)
+		if len(batch) < pageSize {
+			break
+		}
+		page++
+	}
+
+	return ents
+
 }

@@ -21,6 +21,7 @@ func handleAlpacaStockDataRequest(req requests.DataRequest) types.DataResponse {
 	client := marketdata.NewClient(marketdata.ClientOpts{
 		APIKey:    os.Getenv("ALPACA_KEY"),
 		APISecret: os.Getenv("ALPACA_SECRET"),
+		Feed:      marketdata.SIP,
 	})
 	symbol := req.GetSymbol()
 	dtype := req.GetDataType()

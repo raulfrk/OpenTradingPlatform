@@ -16,7 +16,9 @@ services:
       POSTGRES_PASSWORD: example
     ports:
       - 5432:5432
-
+    volumes:
+      - ./customPostgresql.conf:/etc/postgresql/postgresql.conf
+    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
   adminer:
     image: adminer
     restart: always

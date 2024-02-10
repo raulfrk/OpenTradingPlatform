@@ -112,11 +112,13 @@ func GetTradesFromRequest(symbol string, req requests.DataRequest) ([]*entities.
 
 func GetTrades(source, symbol, assetClass string, startTime, endTime int64) []*entities.Trade {
 	var trades []Trade
-	DB.Preload("Conditions").Where("source = ? AND symbol = ? AND asset_class = ? AND timestamp >= ? AND timestamp <= ?",
+	tx := DB.Preload("Conditions").Where("source = ? AND symbol = ? AND asset_class = ? AND timestamp >= ? AND timestamp <= ?",
 		source,
 		symbol,
 		assetClass,
 		time.Unix(startTime, 0),
-		time.Unix(endTime, 0)).Order("Timestamp").Find(&trades)
+		time.Unix(endTime, 0)).
+		Order("Timestamp")
+	trades = PaginateRequest(tx, Trade{})
 	return TradesToEntities(trades)
 }
