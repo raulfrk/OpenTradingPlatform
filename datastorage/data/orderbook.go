@@ -142,11 +142,12 @@ func GetOrderbookFromRequest(symbol string, req requests.DataRequest) ([]*entiti
 func GetOrderbook(source, symbol, assetClass string, startTime, endTime int64) []*entities.Orderbook {
 	var orderbooks []Orderbook
 
-	DB.Preload("Asks").Preload("Bids").Where("source = ? AND symbol = ? AND asset_class = ? AND timestamp >= ? AND timestamp < ?",
+	tx := DB.Preload("Asks").Preload("Bids").Where("source = ? AND symbol = ? AND asset_class = ? AND timestamp >= ? AND timestamp < ?",
 		source,
 		symbol,
 		assetClass,
 		time.Unix(startTime, 0),
-		time.Unix(endTime, 0)).Find(&orderbooks)
+		time.Unix(endTime, 0))
+	orderbooks = PaginateRequest(tx, Orderbook{})
 	return OrderbooksToEntities(orderbooks)
 }

@@ -116,11 +116,12 @@ func GetQuoteFromRequest(symbol string, req requests.DataRequest) ([]*entities.Q
 
 func GetQuote(source, symbol, assetClass string, startTime, endTime int64) []*entities.Quote {
 	var quotes []Quote
-	DB.Preload("Conditions").Where("source = ? AND symbol = ? AND asset_class = ? AND timestamp >= ? AND timestamp <= ?",
+	tx := DB.Preload("Conditions").Where("source = ? AND symbol = ? AND asset_class = ? AND timestamp >= ? AND timestamp <= ?",
 		source,
 		symbol,
 		assetClass,
 		time.Unix(startTime, 0),
-		time.Unix(endTime, 0)).Order("Timestamp").Find(&quotes)
+		time.Unix(endTime, 0)).Order("Timestamp")
+	quotes = PaginateRequest(tx, Quote{})
 	return QuotesToEntities(quotes)
 }

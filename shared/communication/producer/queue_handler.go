@@ -62,7 +62,7 @@ func handleQueue(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
 	}
 	defer nc.Close()
 	msgs := <-handler.Ch
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*600)
 
 	first := (*msgs)[0]
 	topic = first.Topic

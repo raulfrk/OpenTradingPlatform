@@ -244,6 +244,8 @@ func GetNewsFingerprint(fingerprint string) []*entities.News {
 		Preload("LLM").
 		Where("fingerprint = ?", fingerprint).Find(&news)
 
+	news = PaginateRequest(tx, News{})
+
 	if tx.Error != nil {
 		logging.Log().Error().
 			Err(tx.Error).
@@ -263,7 +265,8 @@ func GetNews(source string, symbol string, startTime int64, endTime int64) []*en
 			source,
 			symbol,
 			time.Unix(startTime, 0),
-			time.Unix(endTime, 0)).Order("updated_at_timestamp DESC").Find(&news)
+			time.Unix(endTime, 0)).Order("updated_at_timestamp DESC")
+	news = PaginateRequest(tx, News{})
 	logging.Log().Debug().Int("count", len(news)).Msg("finished getting news from db")
 
 	if tx.Error != nil {
