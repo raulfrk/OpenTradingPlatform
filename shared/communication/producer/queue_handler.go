@@ -3,6 +3,7 @@ package producer
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"sync"
 	"time"
 	"tradingplatform/shared/communication"
@@ -62,7 +63,7 @@ func handleQueue(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
 	}
 	defer nc.Close()
 	msgs := <-handler.Ch
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*600)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 
 	first := (*msgs)[0]
 	topic = first.Topic
@@ -91,4 +92,9 @@ func handleQueue(handler *utils.Handler[[]*sharedent.Message], noConfirm bool) {
 	delete(queues, topic)
 	queuesMutex.Unlock()
 	logging.Log().Debug().Str("topic", topic).Msg("queue handler stopped")
+}
+
+func GenerateQueueID() string {
+	return uuid.New().String()
+
 }
