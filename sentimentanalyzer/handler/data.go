@@ -300,7 +300,7 @@ func HandleAnalysisNewsFromDB(ctx context.Context, req *requests.SentimentAnalys
 			return news[i].UpdatedAt < news[j].UpdatedAt
 		})
 
-		responseTopic := utils.NewDataTopic(types.SentimentAnalyzer, types.Internal, types.News, types.NewsWithSentiment, req.GetSymbol(), news[len(news)-1].Fingerprint, len(news)).Generate()
+		responseTopic := utils.NewDataTopic(types.SentimentAnalyzer, types.Internal, types.News, types.NewsWithSentiment, req.GetSymbol(), producer.GenerateQueueID(), len(news)).Generate()
 		handler, handlerResponse := producer.GetQueueHandler(responseTopic, req.NoConfirm)
 		if handlerResponse.Err != "" {
 			return handlerResponse

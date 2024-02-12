@@ -3,6 +3,7 @@ package data
 import (
 	"fmt"
 	"tradingplatform/dataprovider/provider/alpaca"
+	"tradingplatform/shared/communication/producer"
 	sharedent "tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/requests"
@@ -35,22 +36,12 @@ func handleDataFetch[T any,
 		return nil, types.NewDataError(err)
 	}
 	var responseTopic = ""
-	var queueID = ""
+	var queueID = producer.GenerateQueueID()
 
 	var messages []*sharedent.Message
 	for _, element := range result {
 		newEntity := alpaca.MapEntityWithReturnEntity(element, symbol)
-		entity, ok := newEntity.(V)
-		if !ok {
-			err := fmt.Errorf("error casting to fingerprintable")
-			logging.Log().Error().
-				Err(err).
-				Interface("entity", newEntity).
-				Send()
-			return nil, types.NewDataError(
-				err,
-			)
-		}
+
 		// Set the source of the entity
 		sourceSettable, ok := newEntity.(sharedent.SourceSettable)
 		if ok {
@@ -82,7 +73,6 @@ func handleDataFetch[T any,
 		if ok {
 			timeframeSettable.SetTimeframe(string(timeFrame))
 		}
-		queueID = entity.GetFingerprint()
 
 		payloader, ok := newEntity.(sharedent.Payloader)
 

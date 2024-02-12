@@ -2,6 +2,7 @@ package data
 
 import (
 	"tradingplatform/datastorage/utils"
+	"tradingplatform/shared/communication/producer"
 	"tradingplatform/shared/entities"
 	"tradingplatform/shared/logging"
 	"tradingplatform/shared/types"
@@ -31,8 +32,8 @@ func HandleDataFetch[T any,
 	var queueID = ""
 
 	var messages []*entities.Message
+	queueID = producer.GenerateQueueID()
 	for _, entity := range result {
-		queueID = entity.GetFingerprint()
 		messages = append(messages,
 			entities.GenerateMessage(entity,
 				dtype,
