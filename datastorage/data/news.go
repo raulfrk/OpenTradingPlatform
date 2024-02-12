@@ -207,9 +207,56 @@ func InsertNews(news *entities.News) {
 }
 
 func InsertBatchNewsWithSentiment(news []News) {
+	var nonExistingNews []News
+	log := logging.Log().With().Int("news", len(news)).Logger()
+	log.Debug().Msg("started inserting batch news with sentiment")
 	for _, n := range news {
-		InsertNewsWithSentiment(NewsToEntity(n))
+		var foundNews News
+		if err := DB.Where("fingerprint = ?", n.Fingerprint).First(&foundNews).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				nonExistingNews = append(nonExistingNews, n)
+			} else {
+				logging.Log().Error().
+					Err(err).
+					RawJSON("news", entities.GenerateJson(NewsToEntity(n))).
+					Msg("finding news")
+			}
+		}
 	}
+	// Insert all non-existing news
+	if len(nonExistingNews) > 0 {
+		InsertBatchNews(nonExistingNews)
+	}
+
+	var allSentiments []Sentiment
+	var allLLMs []LLM
+
+	for _, n := range news {
+		allSentiments = append(allSentiments, n.Sentiment...)
+
+		for _, s := range n.Sentiment {
+			allLLMs = append(allLLMs, LLM{Name: s.LLMName})
+		}
+	}
+
+	DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(allLLMs, 3000).Error; err != nil {
+			logging.Log().Error().
+				Err(err).
+				Msg("inserting batch LLMs")
+			return err
+		}
+
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(allSentiments, 3000).Error; err != nil {
+			logging.Log().Error().
+				Err(err).
+				Msg("inserting batch sentiments")
+			return err
+		}
+		return nil
+	})
+	log.Debug().Msg("finished inserting batch news with sentiment")
+
 }
 
 func InsertBatchNews(news []News) {
