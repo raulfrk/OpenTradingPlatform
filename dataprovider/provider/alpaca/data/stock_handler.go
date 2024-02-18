@@ -30,16 +30,16 @@ func handleAlpacaStockDataRequest(req requests.DataRequest) types.DataResponse {
 	case types.Bar:
 		messages, response = handleDataFetch[marketdata.GetBarsRequest,
 			marketdata.Bar, *sharedent.Bar](client.GetBars, symbol, marketdata.GetBarsRequest{
-			TimeFrame: alpaca.GetAlpacaTimeFrame(req.GetTimeFrame()),
-			PageLimit: 10000,
-			Start:     time.Unix(req.GetStartTime(), 0),
-			End:       time.Unix(req.GetEndTime(), 0),
+			TimeFrame:  alpaca.GetAlpacaTimeFrame(req.GetTimeFrame()),
+			PageLimit:  10000,
+			Start:      time.Unix(req.GetStartTime(), 0),
+			End:        time.Unix(req.GetEndTime(), 0),
+			Adjustment: marketdata.All,
 		}, types.Bar, types.Stock, req.GetTimeFrame())
 
 	case types.Trades:
 		messages, response = handleDataFetch[marketdata.GetTradesRequest,
 			marketdata.Trade, *sharedent.Trade](client.GetTrades, symbol, marketdata.GetTradesRequest{
-			Feed:      marketdata.IEX,
 			PageLimit: 10000,
 			Start:     time.Unix(req.GetStartTime(), 0),
 			End:       time.Unix(req.GetEndTime(), 0),
