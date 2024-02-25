@@ -246,8 +246,6 @@ func InsertBatchNewsWithSentiment(news []News) {
 				Msg("inserting batch LLMs")
 			return err
 		}
-		logging.Log().Debug().Str("fingerprint", allSentiments[0].NewsFingerprint).Msg("inserting sentiment")
-
 		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(allSentiments, 3000).Error; err != nil {
 			logging.Log().Error().
 				Err(err).
